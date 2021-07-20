@@ -7,9 +7,25 @@ use nix::{
 use std::{
     collections::{HashMap, hash_map},
     error::Error,
+    io,
     mem,
     time::Duration
 };
+use termion::{
+    event::Key,
+    input::MouseTerminal,
+    raw::IntoRawMode,
+};
+use tui::{
+    backend::TermionBackend,
+    layout::Constraint,
+    style::{Color, Style},
+    widgets::{Block, Cell, Row, Table},
+    Terminal,
+};
+
+mod event;
+use self::event::{Events, Event};
 
 cfg_if! {
     if #[cfg(target_os = "freebsd")] {
@@ -65,6 +81,7 @@ impl Snapshot {
 }
 
 /// One thing to display in the table
+#[derive(Clone, Debug)]
 struct Element {
     name: String,
     /// Read IOPs
@@ -133,33 +150,104 @@ impl<'a> Iterator for DataSourceIter<'a> {
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut data = DataSource::default();
-    let tick_rate: Duration = Duration::from_secs(1);
 
-    println!("{:40} {:>13} {:>10} {:>13} {:>10} {:>10} {:>10}",
-             "name",
-             "bytes read",
-             "read ops",
-             "bytes written",
-             "write ops",
-             "bytes freed",
-             "free ops"
-    );
-    loop {
-        data.refresh()?;
-        for elem in data.iter() {
-            println!("{:40} {:13} {:10} {:13} {:10} {:10} {:10}",
-                     elem.name,
-                     elem.r_s,
-                     elem.ops_r,
-                     elem.w_s,
-                     elem.ops_w,
-                     elem.d_s,
-                     elem.ops_d,
-             );
+pub struct App {
+    data: DataSource,
+    should_quit: bool
+}
+
+impl App {
+    fn new() -> Self {
+        let mut data = DataSource::default();
+        data.refresh().unwrap();
+        App {
+            data,
+            should_quit: false
         }
-        std::thread::sleep(tick_rate);
+    }
+
+    fn elements<'a>(&'a mut self) -> impl Iterator<Item=Element> + 'a {
+        self.data.iter()
+    }
+
+    fn on_q(&mut self) {
+        self.should_quit = true;
+    }
+
+    fn on_tick(&mut self) {
+        self.data.refresh().unwrap();
+    }
+}
+
+mod ui {
+    use super::*;
+    use tui::{
+        backend::Backend,
+        Frame
+    };
+
+    pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+        //for elem in app.elements() {
+            //println!("{:40} {:>6.0} {:10} {:13} {:10} {:10} {:10}",
+                     //elem.name,
+                     //elem.r_s / 1024.0,
+                     //elem.ops_r,
+                     //elem.w_s,
+                     //elem.ops_w,
+                     //elem.d_s,
+                     //elem.ops_d,
+             //);
+        //}
+        let hstyle = Style::default().fg(Color::Red);
+        let header = Row::new([
+            Cell::from("Dataset").style(hstyle),
+            Cell::from("r/s").style(hstyle),
+            Cell::from("kB/s r").style(hstyle),
+        ]).style(Style::default().bg(Color::Blue));;
+        let rows = app.elements()
+            .map(|elem| Row::new([
+                Cell::from(elem.name),
+                Cell::from(format!("{:>6.0}", elem.ops_r)),
+                Cell::from(format!("{:>6.0}", elem.r_s / 1024.0)),
+            ])).collect::<Vec<_>>();
+        let widths = [
+            Constraint::Length(40),
+            Constraint::Length(7),
+            Constraint::Length(7)
+        ];
+        let t = Table::new(rows)
+            .header(header)
+            .block(Block::default())
+            .widths(&widths);
+        f.render_widget(t, f.size());
+    }
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut app = App::new();
+    let tick_rate: Duration = Duration::from_secs(1);
+    let stdout = io::stdout().into_raw_mode()?;
+
+    let stdout = MouseTerminal::from(stdout);
+    let backend = TermionBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    let stdin = io::stdin();
+    let mut events = Events::new(stdin);
+
+    terminal.clear()?;
+    while !app.should_quit {
+        terminal.draw(|f| ui::draw(f, &mut app))?;
+
+        match events.poll(&tick_rate) {
+            Some(Event::Tick) => {
+                app.on_tick();
+            }
+            Some(Event::Key(Key::Char('q'))) => {
+                app.on_q();
+            }
+            _ => unimplemented!()
+        }
     }
     Ok(())
 }

@@ -9,3 +9,5 @@ edition = "2018"
 cfg-if = "1.0"
 nix = "0.22.0"
 sysctl = "0.4.1"
+termion = "1.5"
+tui = { version = "0.15.0", features = ["termion"] }
