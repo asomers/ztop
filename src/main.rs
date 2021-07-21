@@ -1,5 +1,6 @@
 // vim: tw=80
 use cfg_if::cfg_if;
+use gumdrop::Options;
 use nix::{
     sys::time::TimeSpec,
     time::{ClockId, clock_gettime},
@@ -35,6 +36,33 @@ cfg_if! {
     }
 }
 
+
+/// Display ZFS datasets' I/O in real time
+// TODO: shorten the help options so they fit on 80 columns.
+#[derive(Debug, Default, Options)]
+struct Cli {
+    #[options(help = "print help message")]
+    help: bool,
+    /// only display datasets that are at least 0.1% busy (unimplemented)
+    #[options(short = 'a')]
+    auto: bool,
+    /// display datasets no more than this many levels deep.
+    depth: Option<NonZeroUsize>,
+    /// display update interval, in seconds or with the specified unit
+    /// (unimplemented)
+    #[options(short = 'I')]
+    // Note: argh has a "from_str_fn" property that could be used to create a
+    // custom parser, to parse interval directly to an int or a Duration.  That
+    // would make it easier to save the config file.  But gumpdrop doesn't have
+    // that option.
+    interval: Option<String>,
+    /// Reverse the sort (unimplemented)
+    #[options(short = 'r')]
+    reverse: bool,
+    /// Sort by the named column.  The name should match the column header.
+    /// (unimplemented)
+    sort: Option<String>,
+}
 
 /// A snapshot in time of a dataset's statistics.
 ///
@@ -160,11 +188,12 @@ pub struct App {
 }
 
 impl App {
-    fn new() -> Self {
+    fn new(cli: &Cli) -> Self {
         let mut data = DataSource::default();
         data.refresh().unwrap();
         App {
             data,
+            depth: cli.depth,
             .. Default::default()
         }
     }
@@ -252,7 +281,8 @@ mod ui {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut app = App::new();
+    let cli: Cli = Cli::parse_args_default_or_exit();
+    let mut app = App::new(&cli);
     let tick_rate: Duration = Duration::from_secs(1);
     let stdout = io::stdout().into_raw_mode()?;
 
