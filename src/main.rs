@@ -1,11 +1,13 @@
 // vim: tw=80
 use cfg_if::cfg_if;
 use gumdrop::Options;
+use ieee754::Ieee754;
 use nix::{
     sys::time::TimeSpec,
     time::{ClockId, clock_gettime},
 };
 use std::{
+    array,
     collections::HashMap,
     error::Error,
     io,
@@ -22,7 +24,7 @@ use termion::{
 use tui::{
     backend::TermionBackend,
     layout::Constraint,
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     widgets::{Block, Cell, Row, Table},
     Terminal,
 };
@@ -36,7 +38,6 @@ cfg_if! {
         use freebsd::{SnapshotIter};
     }
 }
-
 
 /// Display ZFS datasets' I/O in real time
 // TODO: shorten the help options so they fit on 80 columns.
@@ -206,7 +207,10 @@ pub struct App {
     data: DataSource,
     datasets: Vec<String>,
     depth: Option<NonZeroUsize>,
-    should_quit: bool
+    reverse: bool,
+    should_quit: bool,
+    /// 0-based index of the column to sort by, if any
+    sort_idx: Option<usize>
 }
 
 impl App {
@@ -221,11 +225,11 @@ impl App {
         }
     }
 
-    /// Return the elements that should be displayed
-    fn elements<'a>(&'a mut self) -> impl Iterator<Item=Element> + 'a {
-        let datasets = self.datasets.clone();
+    /// Return the elements that should be displayed, in order
+    fn elements(&mut self) -> Vec<Element> {
         let depth = self.depth;
-        self.data.iter()
+        let datasets = &self.datasets;
+        let mut v = self.data.iter()
             .filter(move |elem| {
                 if let Some(limit) = depth {
                     let edepth = elem.name.split("/").count();
@@ -233,10 +237,31 @@ impl App {
                 } else {
                     true
                 }
-            }).filter(move |elem|
+            }).filter(|elem|
                 datasets.is_empty() ||
                     datasets.iter().any(|ds| elem.name.starts_with(ds))
-            )
+            ).collect::<Vec<_>>();
+        match (self.reverse, self.sort_idx) {
+            // TODO: when the total_cmp feature stabilities, use f64::total_cmp
+            // instead.
+            // https://github.com/rust-lang/rust/issues/72599
+            (false, Some(0)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.ops_r, &y.ops_r)),
+            (true,  Some(0)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.ops_r, &x.ops_r)),
+            (false, Some(1)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.r_s, &y.r_s)),
+            (true,  Some(1)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.r_s, &x.r_s)),
+            (false, Some(2)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.ops_w, &y.ops_w)),
+            (true,  Some(2)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.ops_w, &x.ops_w)),
+            (false, Some(3)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.w_s, &y.w_s)),
+            (true,  Some(3)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.w_s, &x.w_s)),
+            (false, Some(4)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.ops_d, &y.ops_d)),
+            (true,  Some(4)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.ops_d, &x.ops_d)),
+            (false, Some(5)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.d_s, &y.d_s)),
+            (true,  Some(5)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.d_s, &x.d_s)),
+            (false, Some(6)) => v.sort_by(|x, y| x.name.cmp(&y.name)),
+            (true,  Some(6)) => v.sort_by(|x, y| y.name.cmp(&x.name)),
+            _ => ()
+        }
+        v
     }
 
     fn on_d(&mut self, more_depth: bool) {
@@ -253,8 +278,28 @@ impl App {
         }
     }
 
+    fn on_minus(&mut self) {
+        self.sort_idx = match self.sort_idx {
+            Some(0) => None,
+            Some(old) => Some(old - 1),
+            None => Some(6)
+        }
+    }
+
+    fn on_plus(&mut self) {
+        self.sort_idx = match self.sort_idx {
+            Some(old) if old >= 6 => None,
+            Some(old) => Some(old + 1),
+            None => Some(0)
+        }
+    }
+
     fn on_q(&mut self) {
         self.should_quit = true;
+    }
+
+    fn on_r(&mut self) {
+        self.reverse ^= true;
     }
 
     fn on_tick(&mut self) {
@@ -271,16 +316,27 @@ mod ui {
 
     pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         let hstyle = Style::default().fg(Color::Red);
-        let header = Row::new([
-            Cell::from("   r/s").style(hstyle),
-            Cell::from(" kB/s r").style(hstyle),
-            Cell::from("   w/s").style(hstyle),
-            Cell::from(" kB/s w").style(hstyle),
-            Cell::from("   d/s").style(hstyle),
-            Cell::from("kB/s d").style(hstyle),
-            Cell::from("Dataset").style(hstyle),
-        ]).style(Style::default().bg(Color::Blue));
+        let sstyle = hstyle.add_modifier(Modifier::REVERSED);
+        let hcells = array::IntoIter::new([
+            Cell::from("   r/s"),
+            Cell::from(" kB/s r"),
+            Cell::from("   w/s"),
+            Cell::from(" kB/s w"),
+            Cell::from("   d/s"),
+            Cell::from("kB/s d"),
+            Cell::from("Dataset"),
+        ]).enumerate()
+            .map(|(i, cell)| {
+                if Some(i) == app.sort_idx {
+                    cell.style(sstyle)
+                } else {
+                    cell.style(hstyle)
+                }
+            });
+        let header = Row::new(hcells)
+            .style(Style::default().bg(Color::Blue));
         let rows = app.elements()
+            .into_iter()
             .map(|elem| Row::new([
                 Cell::from(format!("{:>6.0}", elem.ops_r)),
                 Cell::from(format!("{:>7.0}", elem.r_s / 1024.0)),
@@ -328,6 +384,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             Some(Event::Tick) => {
                 app.on_tick();
             }
+            Some(Event::Key(Key::Char('+'))) => {
+                app.on_plus();
+            }
+            Some(Event::Key(Key::Char('-'))) => {
+                app.on_minus();
+            }
             Some(Event::Key(Key::Char('<'))) => {
                 tick_rate /= 2;
             }
@@ -340,14 +402,15 @@ fn main() -> Result<(), Box<dyn Error>> {
             Some(Event::Key(Key::Char('q'))) => {
                 app.on_q();
             }
+            Some(Event::Key(Key::Char('r'))) => {
+                app.on_r();
+            }
             Some(Event::Key(Key::Char('d'))) => {
                 app.on_d(true);
             }
             // TODO: other keys
             // f for filter dialog
             // F to clear the filter
-            // - and + to change the sort column
-            // r to reverse the sort
             Some(Event::Key(_)) => {
                 // Ignore unknown keys
             }

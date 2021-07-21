@@ -65,6 +65,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "016b02deb8b0c415d8d56a6f0ab265e50c22df61194e37f9be75ed3a722de8a6"
 
 [[package]]
+name = "ieee754"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9007da9cacbd3e6343da136e98b0d2df013f553d35bdec8b518f07bea768e19c"
+
+[[package]]
 name = "libc"
 version = "0.2.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -279,6 +285,7 @@ dependencies = [
  "cfg-if",
  "gumdrop",
  "humanize-rs",
+ "ieee754",
  "nix",
  "sysctl",
  "termion",
