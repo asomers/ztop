@@ -49,19 +49,34 @@ struct Cli {
     /// display datasets no more than this many levels deep.
     depth: Option<NonZeroUsize>,
     /// display update interval, in seconds or with the specified unit
-    /// (unimplemented)
-    #[options(short = 'I')]
+    #[options(short = 's')]
     // Note: argh has a "from_str_fn" property that could be used to create a
     // custom parser, to parse interval directly to an int or a Duration.  That
     // would make it easier to save the config file.  But gumpdrop doesn't have
     // that option.
-    interval: Option<String>,
+    time: Option<String>,
     /// Reverse the sort (unimplemented)
     #[options(short = 'r')]
     reverse: bool,
     /// Sort by the named column.  The name should match the column header.
     /// (unimplemented)
     sort: Option<String>,
+}
+
+impl Cli {
+    fn interval(&self) -> Result<Duration, humanize_rs::ParseError> {
+        match self.time.as_ref() {
+            None => Ok(Duration::from_secs(1)),
+            Some(s) => {
+                if let Ok(fsecs) = s.parse::<f64>() {
+                    Ok(Duration::from_secs_f64(fsecs))
+                } else {
+                    // Must have units
+                    humanize_rs::duration::parse(s)
+                }
+            }
+        }
+    }
 }
 
 /// A snapshot in time of a dataset's statistics.
@@ -283,7 +298,7 @@ mod ui {
 fn main() -> Result<(), Box<dyn Error>> {
     let cli: Cli = Cli::parse_args_default_or_exit();
     let mut app = App::new(&cli);
-    let tick_rate: Duration = Duration::from_secs(1);
+    let mut tick_rate = cli.interval()?;
     let stdout = io::stdout().into_raw_mode()?;
 
     let stdout = MouseTerminal::from(stdout);
@@ -300,6 +315,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         match events.poll(&tick_rate) {
             Some(Event::Tick) => {
                 app.on_tick();
+            }
+            Some(Event::Key(Key::Char('<'))) => {
+                tick_rate /= 2;
+            }
+            Some(Event::Key(Key::Char('>'))) => {
+                tick_rate *= 2;
             }
             Some(Event::Key(Key::Char('D'))) => {
                 app.on_d(false);
