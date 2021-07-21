@@ -46,6 +46,9 @@ struct Cli {
     /// only display datasets that are at least 0.1% busy (unimplemented)
     #[options(short = 'a')]
     auto: bool,
+    /// Display these datasets and their children
+    #[options(free)]
+    datasets: Vec<String>,
     /// display datasets no more than this many levels deep.
     depth: Option<NonZeroUsize>,
     /// display update interval, in seconds or with the specified unit
@@ -198,16 +201,18 @@ impl<'a> Iterator for DataSourceIter<'a> {
 #[derive(Default)]
 pub struct App {
     data: DataSource,
+    datasets: Vec<String>,
     depth: Option<NonZeroUsize>,
     should_quit: bool
 }
 
 impl App {
-    fn new(cli: &Cli) -> Self {
+    fn new(cli: Cli) -> Self {
         let mut data = DataSource::default();
         data.refresh().unwrap();
         App {
             data,
+            datasets: cli.datasets,
             depth: cli.depth,
             .. Default::default()
         }
@@ -215,6 +220,7 @@ impl App {
 
     /// Return the elements that should be displayed
     fn elements<'a>(&'a mut self) -> impl Iterator<Item=Element> + 'a {
+        let datasets = self.datasets.clone();
         let depth = self.depth;
         self.data.iter()
             .filter(move |elem| {
@@ -224,7 +230,10 @@ impl App {
                 } else {
                     true
                 }
-            })
+            }).filter(move |elem|
+                datasets.is_empty() ||
+                    datasets.iter().any(|ds| elem.name.starts_with(ds))
+            )
     }
 
     fn on_d(&mut self, more_depth: bool) {
@@ -297,8 +306,8 @@ mod ui {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli: Cli = Cli::parse_args_default_or_exit();
-    let mut app = App::new(&cli);
     let mut tick_rate = cli.interval()?;
+    let mut app = App::new(cli);
     let stdout = io::stdout().into_raw_mode()?;
 
     let stdout = MouseTerminal::from(stdout);
