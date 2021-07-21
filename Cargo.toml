@@ -2,8 +2,13 @@
 name = "ztop"
 version = "0.1.0"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Alan Somers <asomers@gmail.com>"]
+license = "BSD-2-Clause"
+repository = "https://github.com/asomers/ztop"
+description = "Display ZFS datasets' I/O in real time"
+categories = ["command-line-utilities"]
+keywords = ["zfs"]
+include = ["src/**/*", "LICENSE", "README.md"]
 
 [dependencies]
 cfg-if = "1.0"
