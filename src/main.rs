@@ -273,9 +273,9 @@ mod ui {
         let hstyle = Style::default().fg(Color::Red);
         let header = Row::new([
             Cell::from("   r/s").style(hstyle),
-            Cell::from("kB/s r").style(hstyle),
+            Cell::from(" kB/s r").style(hstyle),
             Cell::from("   w/s").style(hstyle),
-            Cell::from("kB/s w").style(hstyle),
+            Cell::from(" kB/s w").style(hstyle),
             Cell::from("   d/s").style(hstyle),
             Cell::from("kB/s d").style(hstyle),
             Cell::from("Dataset").style(hstyle),
@@ -283,18 +283,18 @@ mod ui {
         let rows = app.elements()
             .map(|elem| Row::new([
                 Cell::from(format!("{:>6.0}", elem.ops_r)),
-                Cell::from(format!("{:>6.0}", elem.r_s / 1024.0)),
+                Cell::from(format!("{:>7.0}", elem.r_s / 1024.0)),
                 Cell::from(format!("{:>6.0}", elem.ops_w)),
-                Cell::from(format!("{:>6.0}", elem.w_s / 1024.0)),
+                Cell::from(format!("{:>7.0}", elem.w_s / 1024.0)),
                 Cell::from(format!("{:>6.0}", elem.ops_d)),
                 Cell::from(format!("{:>6.0}", elem.d_s / 1024.0)),
                 Cell::from(elem.name),
             ])).collect::<Vec<_>>();
         let widths = [
             Constraint::Length(7),
+            Constraint::Length(8),
             Constraint::Length(7),
-            Constraint::Length(7),
-            Constraint::Length(7),
+            Constraint::Length(8),
             Constraint::Length(7),
             Constraint::Length(7),
             Constraint::Min(40),
