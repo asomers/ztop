@@ -6,11 +6,12 @@ use nix::{
     time::{ClockId, clock_gettime},
 };
 use std::{
-    collections::{HashMap, hash_map},
+    collections::HashMap,
     error::Error,
     io,
     mem,
     num::NonZeroUsize,
+    slice,
     time::Duration
 };
 use termion::{
@@ -149,7 +150,7 @@ struct Element {
 struct DataSource {
     prev: HashMap<String, Snapshot>,
     prev_ts: Option<TimeSpec>,
-    cur: HashMap<String, Snapshot>,
+    cur: Vec<Snapshot>,
     cur_ts: Option<TimeSpec>,
 }
 
@@ -172,18 +173,20 @@ impl DataSource {
 
     fn refresh(&mut self) -> Result<(), Box<dyn Error>> {
         let now = clock_gettime(ClockId::CLOCK_MONOTONIC)?;
-        self.prev = mem::replace(&mut self.cur, HashMap::new());
+        self.prev = mem::replace(&mut self.cur, Vec::new())
+            .into_iter()
+            .map(|ss| (ss.name.clone(), ss))
+            .collect();
         self.prev_ts = self.cur_ts.replace(now);
         for rss in Snapshot::iter().unwrap() {
-            let ss = rss?;
-            self.cur.insert(ss.name.clone(), ss);
+            self.cur.push(rss?);
         }
         Ok(())
     }
 }
 
 struct DataSourceIter<'a> {
-    inner_iter: hash_map::Iter<'a, String, Snapshot>,
+    inner_iter: slice::Iter<'a, Snapshot>,
     ds: &'a DataSource,
     etime: f64
 }
@@ -193,7 +196,7 @@ impl<'a> Iterator for DataSourceIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner_iter.next()
-            .map(|(name, ss)| ss.compute(self.ds.prev.get(name), self.etime))
+            .map(|ss| ss.compute(self.ds.prev.get(&ss.name), self.etime))
     }
 }
 
