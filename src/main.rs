@@ -247,6 +247,19 @@ fn main() -> Result<(), Box<dyn Error>> {
             Some(Event::Key(Key::Char('q'))) => {
                 app.on_q();
             }
+            // TODO: other keys
+            // f for filter dialog
+            // F to clear the filter
+            // - and + to change the sort column
+            // r to reverse the sort
+            // d/D for more/less depth
+            Some(Event::Key(_)) => {
+                // Ignore unknown keys
+            }
+            None => {
+                // stdin closed for some reason
+                break;
+            },
             _ => unimplemented!()
         }
     }
