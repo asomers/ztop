@@ -358,5 +358,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             _ => unimplemented!()
         }
     }
+    terminal.set_cursor(0, terminal.size()?.height - 1)?;
     Ok(())
 }
