@@ -9,6 +9,7 @@ use std::{
     error::Error,
     io,
     mem,
+    num::NonZeroUsize,
     time::Duration
 };
 use termion::{
@@ -151,8 +152,10 @@ impl<'a> Iterator for DataSourceIter<'a> {
 }
 
 
+#[derive(Default)]
 pub struct App {
     data: DataSource,
+    depth: Option<NonZeroUsize>,
     should_quit: bool
 }
 
@@ -162,12 +165,36 @@ impl App {
         data.refresh().unwrap();
         App {
             data,
-            should_quit: false
+            .. Default::default()
         }
     }
 
+    /// Return the elements that should be displayed
     fn elements<'a>(&'a mut self) -> impl Iterator<Item=Element> + 'a {
+        let depth = self.depth;
         self.data.iter()
+            .filter(move |elem| {
+                if let Some(limit) = depth {
+                    let edepth = elem.name.split("/").count();
+                    edepth <= limit.get()
+                } else {
+                    true
+                }
+            })
+    }
+
+    fn on_d(&mut self, more_depth: bool) {
+        self.depth = if more_depth {
+            match self.depth {
+                None => NonZeroUsize::new(1),
+                Some(x) => NonZeroUsize::new(x.get() + 1)
+            }
+        } else {
+            match self.depth {
+                None => None,
+                Some(x) => NonZeroUsize::new(x.get() - 1)
+            }
+        }
     }
 
     fn on_q(&mut self) {
@@ -244,15 +271,20 @@ fn main() -> Result<(), Box<dyn Error>> {
             Some(Event::Tick) => {
                 app.on_tick();
             }
+            Some(Event::Key(Key::Char('D'))) => {
+                app.on_d(false);
+            }
             Some(Event::Key(Key::Char('q'))) => {
                 app.on_q();
+            }
+            Some(Event::Key(Key::Char('d'))) => {
+                app.on_d(true);
             }
             // TODO: other keys
             // f for filter dialog
             // F to clear the filter
             // - and + to change the sort column
             // r to reverse the sort
-            // d/D for more/less depth
             Some(Event::Key(_)) => {
                 // Ignore unknown keys
             }
