@@ -187,33 +187,34 @@ mod ui {
     };
 
     pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
-        //for elem in app.elements() {
-            //println!("{:40} {:>6.0} {:10} {:13} {:10} {:10} {:10}",
-                     //elem.name,
-                     //elem.r_s / 1024.0,
-                     //elem.ops_r,
-                     //elem.w_s,
-                     //elem.ops_w,
-                     //elem.d_s,
-                     //elem.ops_d,
-             //);
-        //}
         let hstyle = Style::default().fg(Color::Red);
         let header = Row::new([
-            Cell::from("Dataset").style(hstyle),
-            Cell::from("r/s").style(hstyle),
+            Cell::from("   r/s").style(hstyle),
             Cell::from("kB/s r").style(hstyle),
-        ]).style(Style::default().bg(Color::Blue));;
+            Cell::from("   w/s").style(hstyle),
+            Cell::from("kB/s w").style(hstyle),
+            Cell::from("   d/s").style(hstyle),
+            Cell::from("kB/s d").style(hstyle),
+            Cell::from("Dataset").style(hstyle),
+        ]).style(Style::default().bg(Color::Blue));
         let rows = app.elements()
             .map(|elem| Row::new([
-                Cell::from(elem.name),
                 Cell::from(format!("{:>6.0}", elem.ops_r)),
                 Cell::from(format!("{:>6.0}", elem.r_s / 1024.0)),
+                Cell::from(format!("{:>6.0}", elem.ops_w)),
+                Cell::from(format!("{:>6.0}", elem.w_s / 1024.0)),
+                Cell::from(format!("{:>6.0}", elem.ops_d)),
+                Cell::from(format!("{:>6.0}", elem.d_s / 1024.0)),
+                Cell::from(elem.name),
             ])).collect::<Vec<_>>();
         let widths = [
-            Constraint::Length(40),
             Constraint::Length(7),
-            Constraint::Length(7)
+            Constraint::Length(7),
+            Constraint::Length(7),
+            Constraint::Length(7),
+            Constraint::Length(7),
+            Constraint::Length(7),
+            Constraint::Min(40),
         ];
         let t = Table::new(rows)
             .header(header)
