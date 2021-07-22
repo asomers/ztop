@@ -1,6 +1,6 @@
 // vim: tw=80
 use cfg_if::cfg_if;
-use gumdrop::Options;
+use structopt::StructOpt;
 use ieee754::Ieee754;
 use nix::{
     sys::time::TimeSpec,
@@ -41,45 +41,35 @@ cfg_if! {
 
 /// Display ZFS datasets' I/O in real time
 // TODO: shorten the help options so they fit on 80 columns.
-#[derive(Debug, Default, Options)]
+#[derive(Debug, Default, StructOpt)]
 struct Cli {
-    #[options(help = "print help message")]
-    help: bool,
     /// only display datasets that are at least 0.1% busy (unimplemented)
-    #[options(short = 'a')]
+    #[structopt(short = "a")]
     auto: bool,
-    /// Display these datasets and their children
-    #[options(free)]
-    datasets: Vec<String>,
     /// display datasets no more than this many levels deep.
+    #[structopt(short = "d")]
     depth: Option<NonZeroUsize>,
     /// display update interval, in seconds or with the specified unit
-    #[options(short = 's')]
-    // Note: argh has a "from_str_fn" property that could be used to create a
-    // custom parser, to parse interval directly to an int or a Duration.  That
-    // would make it easier to save the config file.  But gumpdrop doesn't have
-    // that option.
-    time: Option<String>,
+    #[structopt(short = "t", parse(try_from_str = Cli::duration_from_str))]
+    time: Option<Duration>,
     /// Reverse the sort (unimplemented)
-    #[options(short = 'r')]
+    #[structopt(short = "r")]
     reverse: bool,
     /// Sort by the named column.  The name should match the column header.
     /// (unimplemented)
+    #[structopt(short = "s")]
     sort: Option<String>,
+    /// Display these datasets and their children
+    datasets: Vec<String>,
 }
 
 impl Cli {
-    fn interval(&self) -> Result<Duration, humanize_rs::ParseError> {
-        match self.time.as_ref() {
-            None => Ok(Duration::from_secs(1)),
-            Some(s) => {
-                if let Ok(fsecs) = s.parse::<f64>() {
-                    Ok(Duration::from_secs_f64(fsecs))
-                } else {
-                    // Must have units
-                    humanize_rs::duration::parse(s)
-                }
-            }
+    fn duration_from_str(s: &str) -> Result<Duration, humanize_rs::ParseError> {
+        if let Ok(fsecs) = s.parse::<f64>() {
+            Ok(Duration::from_secs_f64(fsecs))
+        } else {
+            // Must have units
+            humanize_rs::duration::parse(s)
         }
     }
 }
@@ -364,8 +354,8 @@ mod ui {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let cli: Cli = Cli::parse_args_default_or_exit();
-    let mut tick_rate = cli.interval()?;
+    let cli: Cli = Cli::from_args();
+    let mut tick_rate = cli.time.unwrap_or(Duration::from_secs(1));
     let mut app = App::new(cli);
     let stdout = io::stdout().into_raw_mode()?;
 
