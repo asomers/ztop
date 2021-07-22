@@ -5,11 +5,16 @@ Display ZFS datasets' I/O in real time
 [![Build Status](https://api.cirrus-ci.com/github/asomers/ztop.svg)](https://cirrus-ci.com/github/asomers/ztop)
 [![Crates.io](https://img.shields.io/crates/v/ztop.svg)](https://crates.io/crates/ztop)
 
-## Overview
+# Overview
 
 `ztop` is like `top`, but for ZFS datasets.  It displays the real-time activity
 for datasets.  The built-in `zpool iostat` can display real-time I/O statistics
 for pools, but until now there was no similar tool for datasets.
+
+# Platform support
+
+`ztop` work on FreeBSD.  It would probably work on Linux with minor
+modifications.  Patches welcome.
 
 # Minimum Supported Rust Version (MSRV)
 
