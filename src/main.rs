@@ -157,7 +157,7 @@ struct DataSource {
 
 impl DataSource {
     /// Iterate through all the datasets, returning current stats
-    fn iter<'a>(&'a mut self) -> impl Iterator<Item=Element> + 'a {
+    fn iter(&mut self) -> impl Iterator<Item=Element> + '_ {
         let etime = if let Some(prev_ts) = self.prev_ts.as_ref() {
             let delta = *self.cur_ts.as_ref().unwrap() - *prev_ts;
             delta.tv_sec() as f64 + delta.tv_nsec() as f64 * 1e-9
@@ -174,7 +174,7 @@ impl DataSource {
 
     fn refresh(&mut self) -> Result<(), Box<dyn Error>> {
         let now = clock_gettime(ClockId::CLOCK_MONOTONIC)?;
-        self.prev = mem::replace(&mut self.cur, Vec::new())
+        self.prev = mem::take(&mut self.cur)
             .into_iter()
             .map(|ss| (ss.name.clone(), ss))
             .collect();
@@ -232,7 +232,7 @@ impl App {
         let mut v = self.data.iter()
             .filter(move |elem| {
                 if let Some(limit) = depth {
-                    let edepth = elem.name.split("/").count();
+                    let edepth = elem.name.split('/').count();
                     edepth <= limit.get()
                 } else {
                     true

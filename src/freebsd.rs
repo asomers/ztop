@@ -38,7 +38,7 @@ impl SnapshotIter {
     /// If all of the sysctls relevant to the snapshot have been received,
     /// returns `Some(snapshot)` and prepares `self` to build the next Snapshot.
     fn build(&mut self, name: String, value: CtlValue) -> Option<Snapshot> {
-        let mut fields = name.split(".");
+        let mut fields = name.split('.');
         let on = fields.nth(4).unwrap();
         if let Some(son) = &self.objset_name {
             assert_eq!(son, on);
@@ -96,7 +96,7 @@ impl SnapshotIter {
                 Some(Ok(ctl)) => {
                     match ctl.name() {
                         Ok(name) => {
-                            if name.splitn(4, ".")
+                            if name.splitn(4, '.')
                                 .last()
                                 .map(|l| l.starts_with("dataset"))
                                 .unwrap_or(false)
