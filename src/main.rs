@@ -353,6 +353,8 @@ mod ui {
     }
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/7483
+#[allow(clippy::or_fun_call)]
 fn main() -> Result<(), Box<dyn Error>> {
     let cli: Cli = Cli::from_args();
     let mut tick_rate = cli.time.unwrap_or(Duration::from_secs(1));
