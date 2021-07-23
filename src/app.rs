@@ -151,13 +151,18 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(datasets: Vec<String>, depth: Option<NonZeroUsize>) -> Self {
+    pub fn new(
+        datasets: Vec<String>,
+        depth: Option<NonZeroUsize>,
+        filter: Option<Regex>
+    ) -> Self {
         let mut data = DataSource::default();
         data.refresh().unwrap();
         App {
             data,
             datasets,
             depth,
+            filter,
             .. Default::default()
         }
     }

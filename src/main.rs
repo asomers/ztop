@@ -36,6 +36,9 @@ struct Cli {
     /// display datasets no more than this many levels deep.
     #[structopt(short = "d")]
     depth: Option<NonZeroUsize>,
+    /// only display datasets with names matching filter, as a regex.
+    #[structopt(short = "f", parse(try_from_str = Regex::new))]
+    filter: Option<Regex>,
     /// display update interval, in seconds or with the specified unit
     #[structopt(short = "t", parse(try_from_str = Cli::duration_from_str))]
     time: Option<Duration>,
@@ -185,7 +188,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cli: Cli = Cli::from_args();
     let mut editting_filter = false;
     let mut tick_rate = cli.time.unwrap_or(Duration::from_secs(1));
-    let mut app = App::new(cli.datasets, cli.depth);
+    let mut app = App::new(cli.datasets, cli.depth, cli.filter);
     let mut filter_popup = FilterPopup::default();
     let stdout = io::stdout().into_raw_mode()?;
 
