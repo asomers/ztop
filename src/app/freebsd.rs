@@ -3,7 +3,7 @@ use std::error::Error;
 use super::Snapshot;
 use sysctl::{Ctl, CtlIter, Sysctl, SysctlError, CtlValue};
 
-pub struct SnapshotIter {
+pub(super) struct SnapshotIter {
     ctl_iter: CtlIter,
     objset_name: Option<String>,
     dataset_name: Option<String>,
