@@ -5,6 +5,7 @@ use nix::{
     sys::time::TimeSpec,
     time::{ClockId, clock_gettime},
 };
+use regex::Regex;
 use std::{
     collections::HashMap,
     error::Error,
@@ -142,6 +143,7 @@ pub struct App {
     data: DataSource,
     datasets: Vec<String>,
     depth: Option<NonZeroUsize>,
+    filter: Option<Regex>,
     reverse: bool,
     should_quit: bool,
     /// 0-based index of the column to sort by, if any
@@ -160,10 +162,15 @@ impl App {
         }
     }
 
+    pub fn clear_filter(&mut self) {
+        self.filter = None;
+    }
+
     /// Return the elements that should be displayed, in order
     pub fn elements(&mut self) -> Vec<Element> {
         let depth = self.depth;
         let datasets = &self.datasets;
+        let filter = &self.filter;
         let mut v = self.data.iter()
             .filter(move |elem| {
                 if let Some(limit) = depth {
@@ -175,6 +182,10 @@ impl App {
             }).filter(|elem|
                 datasets.is_empty() ||
                     datasets.iter().any(|ds| elem.name.starts_with(ds))
+            ).filter(|elem|
+                 filter.as_ref()
+                 .map(|f| f.is_match(&elem.name))
+                 .unwrap_or(true)
             ).collect::<Vec<_>>();
         match (self.reverse, self.sort_idx) {
             // TODO: when the total_cmp feature stabilities, use f64::total_cmp
@@ -239,6 +250,10 @@ impl App {
 
     pub fn on_tick(&mut self) {
         self.data.refresh().unwrap();
+    }
+
+    pub fn set_filter(&mut self, filter: Regex) {
+        self.filter = Some(filter);
     }
 
     pub fn should_quit(&self) -> bool {

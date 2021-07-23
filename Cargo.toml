@@ -19,3 +19,8 @@ structopt = "0.3.22"
 sysctl = "0.4.1"
 termion = "1.5"
 tui = { version = "0.15.0", features = ["termion"] }
+
+[dependencies.regex]
+version = "1"
+# Disable the unicode feature, since dataset names are always ASCII
+features = [ "perf", "std" ]

@@ -1,4 +1,5 @@
 // vim: tw=80
+use regex::Regex;
 use structopt::StructOpt;
 use std::{
     array,
@@ -14,9 +15,9 @@ use termion::{
 };
 use tui::{
     backend::TermionBackend,
-    layout::Constraint,
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, Cell, Row, Table},
+    widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table},
     Terminal,
 };
 
@@ -60,12 +61,62 @@ impl Cli {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct FilterPopup {
+    new_regex: String
+}
+
+impl FilterPopup {
+    pub fn on_enter(&mut self) -> Result<Regex, impl Error> {
+        Regex::new(&self.new_regex)
+    }
+
+    pub fn on_key(&mut self, key: Key) {
+        match key {
+            Key::Char(c) => {
+                self.new_regex.push(c);
+            }
+            Key::Backspace => {
+                self.new_regex.pop();
+            }
+            _ => {}
+        }
+    }
+}
+
 mod ui {
     use super::*;
     use tui::{
         backend::Backend,
         Frame
     };
+
+    // helper function to create a one-line popup box
+    fn popup_layout(x: u16, y: u16, r: Rect) -> Rect {
+        let popup_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(
+                [
+                    Constraint::Max(r.height.saturating_sub(y)/2),
+                    Constraint::Length(y),
+                    Constraint::Max(r.height.saturating_sub(y)/2),
+                ]
+                .as_ref(),
+            )
+            .split(r);
+
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(
+                [
+                    Constraint::Max(r.width.saturating_sub(x) / 2),
+                    Constraint::Length(x),
+                    Constraint::Max(r.width.saturating_sub(x) / 2),
+                ]
+                .as_ref(),
+            )
+            .split(popup_layout[1])[1]
+    }
 
     pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         let hstyle = Style::default().fg(Color::Red);
@@ -114,14 +165,28 @@ mod ui {
             .widths(&widths);
         f.render_widget(t, f.size());
     }
+
+    pub fn draw_filter<B: Backend>(f: &mut Frame<B>, app: &mut FilterPopup) {
+        let area = popup_layout(40, 3, f.size());
+        let popup_box = Paragraph::new(app.new_regex.as_ref())
+            .block(
+                Block::default()
+                .borders(Borders::ALL)
+                .title("Filter regex")
+            );
+        f.render_widget(Clear, area);
+        f.render_widget(popup_box, area);
+    }
 }
 
 // https://github.com/rust-lang/rust-clippy/issues/7483
 #[allow(clippy::or_fun_call)]
 fn main() -> Result<(), Box<dyn Error>> {
     let cli: Cli = Cli::from_args();
+    let mut editting_filter = false;
     let mut tick_rate = cli.time.unwrap_or(Duration::from_secs(1));
     let mut app = App::new(cli.datasets, cli.depth);
+    let mut filter_popup = FilterPopup::default();
     let stdout = io::stdout().into_raw_mode()?;
 
     let stdout = MouseTerminal::from(stdout);
@@ -133,11 +198,27 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     terminal.clear()?;
     while !app.should_quit() {
-        terminal.draw(|f| ui::draw(f, &mut app))?;
+        terminal.draw(|f| {
+            ui::draw(f, &mut app);
+            if editting_filter {
+                ui::draw_filter(f, &mut filter_popup)
+             }
+        })?;
 
         match events.poll(&tick_rate) {
             Some(Event::Tick) => {
                 app.on_tick();
+            }
+            Some(Event::Key(Key::Esc)) if editting_filter => {
+                editting_filter = false;
+            }
+            Some(Event::Key(Key::Char('\n'))) if editting_filter => {
+                let filter = filter_popup.on_enter()?;
+                app.set_filter(filter);
+                editting_filter = false;
+            }
+            Some(Event::Key(key)) if editting_filter => {
+                filter_popup.on_key(key);
             }
             Some(Event::Key(Key::Char('+'))) => {
                 app.on_plus();
@@ -154,18 +235,21 @@ fn main() -> Result<(), Box<dyn Error>> {
             Some(Event::Key(Key::Char('D'))) => {
                 app.on_d(false);
             }
+            Some(Event::Key(Key::Char('d'))) => {
+                app.on_d(true);
+            }
+            Some(Event::Key(Key::Char('F'))) => {
+                app.clear_filter();
+            }
+            Some(Event::Key(Key::Char('f'))) => {
+                editting_filter = true;
+            }
             Some(Event::Key(Key::Char('q'))) => {
                 app.on_q();
             }
             Some(Event::Key(Key::Char('r'))) => {
                 app.on_r();
             }
-            Some(Event::Key(Key::Char('d'))) => {
-                app.on_d(true);
-            }
-            // TODO: other keys
-            // f for filter dialog
-            // F to clear the filter
             Some(Event::Key(_)) => {
                 // Ignore unknown keys
             }
