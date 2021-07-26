@@ -46,11 +46,10 @@ struct Cli {
     #[structopt(short = "t", parse(try_from_str = Cli::duration_from_str),
         long = "time")]
     time: Option<Duration>,
-    /// Reverse the sort (unimplemented)
+    /// Reverse the sort
     #[structopt(short = "r", long = "reverse")]
     reverse: bool,
     /// Sort by the named column.  The name should match the column header.
-    /// (unimplemented)
     #[structopt(short = "s", long = "sort")]
     sort: Option<String>,
     /// Display these pools and their children
@@ -184,6 +183,21 @@ mod ui {
         f.render_widget(Clear, area);
         f.render_widget(popup_box, area);
     }
+
+    // Needs a &String argument to work with Option<String>::as_ref
+    #[allow(clippy::ptr_arg)]
+    pub fn col_idx(col_name: &String) -> Option<usize> {
+        match col_name.trim() {
+            "r/s" => Some(0),
+            " kB/s r" => Some(1),
+            "w/s" => Some(2),
+            " kB/s w" => Some(3),
+            "d/s" => Some(4),
+            "kB/s d" => Some(5),
+            "Dataset" => Some(6),
+            _ => None
+        }
+    }
 }
 
 // https://github.com/rust-lang/rust-clippy/issues/7483
@@ -192,8 +206,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cli: Cli = Cli::from_args();
     let mut editting_filter = false;
     let mut tick_rate = cli.time.unwrap_or(Duration::from_secs(1));
+    let col_idx = cli.sort.as_ref().map(ui::col_idx).unwrap_or(None);
     let mut app = App::new(cli.auto, cli.children, cli.pools, cli.depth,
-                           cli.filter);
+                           cli.filter, cli.reverse, col_idx);
     let mut filter_popup = FilterPopup::default();
     let stdout = io::stdout().into_raw_mode()?;
 

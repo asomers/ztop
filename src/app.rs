@@ -249,7 +249,9 @@ impl App {
         children: bool,
         pools: Vec<String>,
         depth: Option<NonZeroUsize>,
-        filter: Option<Regex>
+        filter: Option<Regex>,
+        reverse: bool,
+        sort_idx: Option<usize>
     ) -> Self {
         let mut data = DataSource::new(children, pools);
         data.refresh().unwrap();
@@ -258,6 +260,8 @@ impl App {
             data,
             depth,
             filter,
+            reverse,
+            sort_idx,
             .. Default::default()
         }
     }
