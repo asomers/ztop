@@ -16,8 +16,17 @@ pub(super) struct SnapshotIter {
 }
 
 impl SnapshotIter {
-    pub(crate) fn new() -> Result<Self, Box<dyn Error>> {
-        let ctl_iter = CtlIter::below(Ctl::new("kstat.zfs")?);
+    pub(crate) fn new(pool: Option<&str>) -> Result<Self, Box<dyn Error>> {
+        let root = if let Some(s) = pool {
+            Ctl::new(&format!("kstat.zfs.{}.dataset", s.replace(".", "%25")))
+                .unwrap_or_else(|_e| {
+                    eprintln!("Statistics not found for pool {}", s);
+                    std::process::exit(1);
+                })
+        } else {
+            Ctl::new("kstat.zfs").unwrap()
+        };
+        let ctl_iter = CtlIter::below(root);
         Ok(SnapshotIter{
             ctl_iter,
             objset_name: None,

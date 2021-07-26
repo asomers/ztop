@@ -49,8 +49,8 @@ struct Cli {
     /// (unimplemented)
     #[structopt(short = "s")]
     sort: Option<String>,
-    /// Display these datasets and their children
-    datasets: Vec<String>,
+    /// Display these pools and their children
+    pools: Vec<String>,
 }
 
 impl Cli {
@@ -188,7 +188,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cli: Cli = Cli::from_args();
     let mut editting_filter = false;
     let mut tick_rate = cli.time.unwrap_or(Duration::from_secs(1));
-    let mut app = App::new(cli.auto, cli.datasets, cli.depth, cli.filter);
+    let mut app = App::new(cli.auto, cli.pools, cli.depth, cli.filter);
     let mut filter_popup = FilterPopup::default();
     let stdout = io::stdout().into_raw_mode()?;
 

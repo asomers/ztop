@@ -60,9 +60,12 @@ impl Snapshot {
         }
     }
 
-    /// Iterate through all ZFS datasets, returning stats for each.
-    pub fn iter() -> Result<SnapshotIter, Box<dyn Error>> {
-        SnapshotIter::new()
+    /// Iterate through ZFS datasets, returning stats for each.
+    ///
+    /// Iterates through every dataset beneath each of the given pools, or
+    /// through all datasets if no pool is supplied.
+    pub fn iter(pool: Option<&str>) -> Result<SnapshotIter, Box<dyn Error>> {
+        SnapshotIter::new(pool)
     }
 }
 
@@ -72,9 +75,17 @@ struct DataSource {
     prev_ts: Option<TimeSpec>,
     cur: Vec<Snapshot>,
     cur_ts: Option<TimeSpec>,
+    pools: Vec<String>
 }
 
 impl DataSource {
+    fn new(pools: Vec<String>) -> Self {
+        DataSource {
+            pools,
+            .. Default::default()
+        }
+    }
+
     /// Iterate through all the datasets, returning current stats
     fn iter(&mut self) -> impl Iterator<Item=Element> + '_ {
         let etime = if let Some(prev_ts) = self.prev_ts.as_ref() {
@@ -98,8 +109,16 @@ impl DataSource {
             .map(|ss| (ss.name.clone(), ss))
             .collect();
         self.prev_ts = self.cur_ts.replace(now);
-        for rss in Snapshot::iter().unwrap() {
-            self.cur.push(rss?);
+        if self.pools.is_empty() {
+            for rss in Snapshot::iter(None).unwrap() {
+                self.cur.push(rss?);
+            }
+        } else {
+            for pool in self.pools.iter() {
+                for rss in Snapshot::iter(Some(pool)).unwrap() {
+                    self.cur.push(rss?);
+                }
+            }
         }
         Ok(())
     }
@@ -142,7 +161,6 @@ pub struct Element {
 pub struct App {
     auto: bool,
     data: DataSource,
-    datasets: Vec<String>,
     depth: Option<NonZeroUsize>,
     filter: Option<Regex>,
     reverse: bool,
@@ -154,16 +172,15 @@ pub struct App {
 impl App {
     pub fn new(
         auto: bool,
-        datasets: Vec<String>,
+        pools: Vec<String>,
         depth: Option<NonZeroUsize>,
         filter: Option<Regex>
     ) -> Self {
-        let mut data = DataSource::default();
+        let mut data = DataSource::new(pools);
         data.refresh().unwrap();
         App {
             auto,
             data,
-            datasets,
             depth,
             filter,
             .. Default::default()
@@ -178,7 +195,6 @@ impl App {
     pub fn elements(&mut self) -> Vec<Element> {
         let auto = self.auto;
         let depth = self.depth;
-        let datasets = &self.datasets;
         let filter = &self.filter;
         let mut v = self.data.iter()
             .filter(move |elem| {
@@ -189,9 +205,6 @@ impl App {
                     true
                 }
             }).filter(|elem|
-                datasets.is_empty() ||
-                    datasets.iter().any(|ds| elem.name.starts_with(ds))
-            ).filter(|elem|
                  filter.as_ref()
                  .map(|f| f.is_match(&elem.name))
                  .unwrap_or(true)
