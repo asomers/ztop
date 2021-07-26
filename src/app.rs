@@ -7,11 +7,10 @@ use nix::{
 };
 use regex::Regex;
 use std::{
-    collections::HashMap,
+    collections::{btree_map, BTreeMap},
     error::Error,
     mem,
     num::NonZeroUsize,
-    slice,
 };
 
 cfg_if! {
@@ -71,9 +70,9 @@ impl Snapshot {
 
 #[derive(Default)]
 struct DataSource {
-    prev: HashMap<String, Snapshot>,
+    prev: BTreeMap<String, Snapshot>,
     prev_ts: Option<TimeSpec>,
-    cur: Vec<Snapshot>,
+    cur: BTreeMap<String, Snapshot>,
     cur_ts: Option<TimeSpec>,
     pools: Vec<String>
 }
@@ -104,19 +103,18 @@ impl DataSource {
 
     fn refresh(&mut self) -> Result<(), Box<dyn Error>> {
         let now = clock_gettime(ClockId::CLOCK_MONOTONIC)?;
-        self.prev = mem::take(&mut self.cur)
-            .into_iter()
-            .map(|ss| (ss.name.clone(), ss))
-            .collect();
+        self.prev = mem::take(&mut self.cur);
         self.prev_ts = self.cur_ts.replace(now);
         if self.pools.is_empty() {
             for rss in Snapshot::iter(None).unwrap() {
-                self.cur.push(rss?);
+                let ss = rss?;
+                self.cur.insert(ss.name.clone(), ss);
             }
         } else {
             for pool in self.pools.iter() {
                 for rss in Snapshot::iter(Some(pool)).unwrap() {
-                    self.cur.push(rss?);
+                    let ss = rss?;
+                    self.cur.insert(ss.name.clone(), ss);
                 }
             }
         }
@@ -125,7 +123,7 @@ impl DataSource {
 }
 
 struct DataSourceIter<'a> {
-    inner_iter: slice::Iter<'a, Snapshot>,
+    inner_iter: btree_map::Iter<'a, String, Snapshot>,
     ds: &'a DataSource,
     etime: f64
 }
@@ -135,7 +133,7 @@ impl<'a> Iterator for DataSourceIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner_iter.next()
-            .map(|ss| ss.compute(self.ds.prev.get(&ss.name), self.etime))
+            .map(|(_, ss)| ss.compute(self.ds.prev.get(&ss.name), self.etime))
     }
 }
 
