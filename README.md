@@ -18,7 +18,7 @@ modifications.  Patches welcome.
 
 # Screenshot
 
-![Screenshot 1](https://github.com/asomers/ztop/raw/master/docs/demo.gif)
+![Screenshot 1](https://raw.githubusercontent.com/asomers/ztop/master/doc/demo.gif)
 
 # Minimum Supported Rust Version (MSRV)
 
