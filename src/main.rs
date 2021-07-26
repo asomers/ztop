@@ -286,7 +286,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 // stdin closed for some reason
                 break;
             },
-            _ => unimplemented!()
+            _ => {
+                // Ignore unknown events
+            }
         }
     }
     terminal.set_cursor(0, terminal.size()?.height - 1)?;

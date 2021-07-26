@@ -58,7 +58,7 @@ impl SnapshotIter {
         match value {
             CtlValue::String(s) => {
                 if field != "dataset_name" {
-                    unimplemented!("Unknown sysctl {:?}", name);
+                    eprintln!("Unknown sysctl {:?}", name);
                 }
                 assert_eq!(self.dataset_name.replace(s), None);
             },
@@ -70,10 +70,10 @@ impl SnapshotIter {
                     "reads" => {self.reads = Some(x);}
                     "nwritten" => {self.nwritten = Some(x);}
                     "writes" => {self.writes = Some(x);}
-                    _ => unimplemented!("Unknown sysctl {:?}", name)
+                    _ => eprintln!("Unknown sysctl {:?}", name),
                 }
             },
-            _ => unimplemented!("Unknown sysctl {:?} = {:?}", name, value)
+            _ => eprintln!("Unknown sysctl {:?}", name),
         };
         if self.dataset_name.is_some() &&
             self.nunlinked.is_some() &&
