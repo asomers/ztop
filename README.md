@@ -16,6 +16,10 @@ for pools, but until now there was no similar tool for datasets.
 `ztop` work on FreeBSD.  It would probably work on Linux with minor
 modifications.  Patches welcome.
 
+# Screenshot
+
+![Screenshot 1](https://github.com/asomers/ztop/raw/master/docs/demo.gif)
+
 # Minimum Supported Rust Version (MSRV)
 
 ztop is supported on Rust 1.53.0 and higher.  It's MSRV will not be
