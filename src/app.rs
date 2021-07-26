@@ -119,7 +119,7 @@ impl DataSource {
     }
 
     /// Iterate over all of the names of parent datasets of the argument
-    fn with_parents<'a>(s: &'a str) -> impl Iterator<Item=&'a str> {
+    fn with_parents(s: &str) -> impl Iterator<Item=&str> {
         s.char_indices()
             .filter_map(move |(idx, c)| {
                 if c == '/' {
@@ -152,13 +152,14 @@ impl DataSource {
         Ok(())
     }
 
-    fn toggle_children(&mut self) {
+    fn toggle_children(&mut self) -> Result<(), Box<dyn Error>> {
         self.children ^= true;
         // Wipe out previous statistics.  The next refresh will report stats
         // since boot.
-        self.refresh();
+        self.refresh()?;
         mem::take(&mut self.prev);
         self.prev_ts = None;
+        Ok(())
     }
 
     /// Insert a snapshot into `cur`, and/or update it and its parents
@@ -311,8 +312,8 @@ impl App {
         self.auto ^= true;
     }
 
-    pub fn on_c(&mut self) {
-        self.data.toggle_children();
+    pub fn on_c(&mut self) -> Result<(), Box<dyn Error>> {
+        self.data.toggle_children()
     }
 
     pub fn on_d(&mut self, more_depth: bool) {
@@ -380,8 +381,8 @@ mod t {
         #[test]
         fn empty() {
             let ds = "";
-            let actual = DataSource::with_parents(ds).collect::<Vec<_>>();
-            assert!(actual.is_empty());
+            let mut actual = DataSource::with_parents(ds);
+            assert!(actual.next().is_none());
         }
 
         #[test]

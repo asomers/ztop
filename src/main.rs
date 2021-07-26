@@ -243,7 +243,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 app.on_a();
             }
             Some(Event::Key(Key::Char('c'))) => {
-                app.on_c();
+                app.on_c()?;
             }
             Some(Event::Key(Key::Char('D'))) => {
                 app.on_d(false);
