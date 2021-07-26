@@ -30,7 +30,7 @@ use self::event::{Events, Event};
 // TODO: shorten the help options so they fit on 80 columns.
 #[derive(Debug, Default, StructOpt)]
 struct Cli {
-    /// only display datasets that are at least 0.1% busy (unimplemented)
+    /// only display datasets that have some activity.
     #[structopt(short = "a")]
     auto: bool,
     /// display datasets no more than this many levels deep.
@@ -188,7 +188,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cli: Cli = Cli::from_args();
     let mut editting_filter = false;
     let mut tick_rate = cli.time.unwrap_or(Duration::from_secs(1));
-    let mut app = App::new(cli.datasets, cli.depth, cli.filter);
+    let mut app = App::new(cli.auto, cli.datasets, cli.depth, cli.filter);
     let mut filter_popup = FilterPopup::default();
     let stdout = io::stdout().into_raw_mode()?;
 
@@ -234,6 +234,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             Some(Event::Key(Key::Char('>'))) => {
                 tick_rate *= 2;
+            }
+            Some(Event::Key(Key::Char('a'))) => {
+                app.on_a();
             }
             Some(Event::Key(Key::Char('D'))) => {
                 app.on_d(false);

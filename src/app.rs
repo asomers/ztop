@@ -140,6 +140,7 @@ pub struct Element {
 
 #[derive(Default)]
 pub struct App {
+    auto: bool,
     data: DataSource,
     datasets: Vec<String>,
     depth: Option<NonZeroUsize>,
@@ -152,6 +153,7 @@ pub struct App {
 
 impl App {
     pub fn new(
+        auto: bool,
         datasets: Vec<String>,
         depth: Option<NonZeroUsize>,
         filter: Option<Regex>
@@ -159,6 +161,7 @@ impl App {
         let mut data = DataSource::default();
         data.refresh().unwrap();
         App {
+            auto,
             data,
             datasets,
             depth,
@@ -173,6 +176,7 @@ impl App {
 
     /// Return the elements that should be displayed, in order
     pub fn elements(&mut self) -> Vec<Element> {
+        let auto = self.auto;
         let depth = self.depth;
         let datasets = &self.datasets;
         let filter = &self.filter;
@@ -191,7 +195,8 @@ impl App {
                  filter.as_ref()
                  .map(|f| f.is_match(&elem.name))
                  .unwrap_or(true)
-            ).collect::<Vec<_>>();
+            ).filter(|elem| !auto || (elem.r_s + elem.w_s + elem.d_s > 1.0))
+            .collect::<Vec<_>>();
         match (self.reverse, self.sort_idx) {
             // TODO: when the total_cmp feature stabilities, use f64::total_cmp
             // instead.
@@ -213,6 +218,10 @@ impl App {
             _ => ()
         }
         v
+    }
+
+    pub fn on_a(&mut self) {
+        self.auto ^= true;
     }
 
     pub fn on_d(&mut self, more_depth: bool) {
