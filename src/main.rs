@@ -31,26 +31,27 @@ use self::event::{Events, Event};
 #[derive(Debug, Default, StructOpt)]
 struct Cli {
     /// only display datasets that have some activity.
-    #[structopt(short = "a")]
+    #[structopt(short = "a", long = "auto", verbatim_doc_comment)]
     auto: bool,
     /// Include child datasets' stats with their parents'.
-    #[structopt(short = "c")]
+    #[structopt(short = "c", long = "children")]
     children: bool,
     /// display datasets no more than this many levels deep.
-    #[structopt(short = "d")]
+    #[structopt(short = "d", long = "depth")]
     depth: Option<NonZeroUsize>,
     /// only display datasets with names matching filter, as a regex.
-    #[structopt(short = "f", parse(try_from_str = Regex::new))]
+    #[structopt(short = "f", parse(try_from_str = Regex::new), long = "filter")]
     filter: Option<Regex>,
     /// display update interval, in seconds or with the specified unit
-    #[structopt(short = "t", parse(try_from_str = Cli::duration_from_str))]
+    #[structopt(short = "t", parse(try_from_str = Cli::duration_from_str),
+        long = "time")]
     time: Option<Duration>,
     /// Reverse the sort (unimplemented)
-    #[structopt(short = "r")]
+    #[structopt(short = "r", long = "reverse")]
     reverse: bool,
     /// Sort by the named column.  The name should match the column header.
     /// (unimplemented)
-    #[structopt(short = "s")]
+    #[structopt(short = "s", long = "sort")]
     sort: Option<String>,
     /// Display these pools and their children
     pools: Vec<String>,
