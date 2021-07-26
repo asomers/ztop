@@ -11,6 +11,7 @@ use std::{
     error::Error,
     mem,
     num::NonZeroUsize,
+    ops::AddAssign
 };
 
 cfg_if! {
@@ -68,8 +69,23 @@ impl Snapshot {
     }
 }
 
+impl AddAssign<&Self> for Snapshot {
+
+    fn add_assign(&mut self, other: &Self) {
+        assert!(other.name.starts_with(&self.name),
+            "Why would you want to combine two unrelated datasets?");
+        self.nunlinked += other.nunlinked;
+        self.nunlinks += other.nunlinks;
+        self.nread += other.nread;
+        self.reads += other.reads;
+        self.nwritten += other.nwritten;
+        self.writes += other.writes;
+    }
+}
+
 #[derive(Default)]
 struct DataSource {
+    children: bool,
     prev: BTreeMap<String, Snapshot>,
     prev_ts: Option<TimeSpec>,
     cur: BTreeMap<String, Snapshot>,
@@ -78,8 +94,9 @@ struct DataSource {
 }
 
 impl DataSource {
-    fn new(pools: Vec<String>) -> Self {
+    fn new(children: bool, pools: Vec<String>) -> Self {
         DataSource {
+            children,
             pools,
             .. Default::default()
         }
@@ -101,6 +118,20 @@ impl DataSource {
         }
     }
 
+    /// Iterate over all of the names of parent datasets of the argument
+    fn with_parents<'a>(s: &'a str) -> impl Iterator<Item=&'a str> {
+        s.char_indices()
+            .filter_map(move |(idx, c)| {
+                if c == '/' {
+                    Some(s.split_at(idx).0)
+                } else if idx == s.len() - 1 {
+                    Some(s)
+                } else {
+                    None
+                }
+            })
+    }
+
     fn refresh(&mut self) -> Result<(), Box<dyn Error>> {
         let now = clock_gettime(ClockId::CLOCK_MONOTONIC)?;
         self.prev = mem::take(&mut self.cur);
@@ -108,17 +139,61 @@ impl DataSource {
         if self.pools.is_empty() {
             for rss in Snapshot::iter(None).unwrap() {
                 let ss = rss?;
-                self.cur.insert(ss.name.clone(), ss);
+                Self::upsert(&mut self.cur, ss, self.children);
             }
         } else {
             for pool in self.pools.iter() {
                 for rss in Snapshot::iter(Some(pool)).unwrap() {
                     let ss = rss?;
-                    self.cur.insert(ss.name.clone(), ss);
+                    Self::upsert(&mut self.cur, ss, self.children);
                 }
             }
         }
         Ok(())
+    }
+
+    fn toggle_children(&mut self) {
+        self.children ^= true;
+        // Wipe out previous statistics.  The next refresh will report stats
+        // since boot.
+        self.refresh();
+        mem::take(&mut self.prev);
+        self.prev_ts = None;
+    }
+
+    /// Insert a snapshot into `cur`, and/or update it and its parents
+    fn upsert(
+        cur: &mut BTreeMap<String, Snapshot>,
+        ss: Snapshot,
+        children: bool)
+    {
+        if children {
+            for dsname in Self::with_parents(&ss.name) {
+                match cur.entry(dsname.to_string()) {
+                   btree_map::Entry::Vacant(ve) => {
+                       if ss.name == dsname {
+                           ve.insert(ss.clone());
+                       } else {
+                           let mut parent_ss = ss.clone();
+                           parent_ss.name = dsname.to_string();
+                           ve.insert(parent_ss);
+                       }
+                   }
+                   btree_map::Entry::Occupied(mut oe) => {
+                       *oe.get_mut() += &ss;
+                   }
+                }
+            }
+        } else {
+            match cur.entry(ss.name.clone()) {
+               btree_map::Entry::Vacant(ve) => {
+                   ve.insert(ss);
+               }
+               btree_map::Entry::Occupied(mut oe) => {
+                   *oe.get_mut() += &ss;
+               }
+            }
+        };
     }
 }
 
@@ -170,11 +245,12 @@ pub struct App {
 impl App {
     pub fn new(
         auto: bool,
+        children: bool,
         pools: Vec<String>,
         depth: Option<NonZeroUsize>,
         filter: Option<Regex>
     ) -> Self {
-        let mut data = DataSource::new(pools);
+        let mut data = DataSource::new(children, pools);
         data.refresh().unwrap();
         App {
             auto,
@@ -235,6 +311,10 @@ impl App {
         self.auto ^= true;
     }
 
+    pub fn on_c(&mut self) {
+        self.data.toggle_children();
+    }
+
     pub fn on_d(&mut self, more_depth: bool) {
         self.depth = if more_depth {
             match self.depth {
@@ -290,4 +370,43 @@ impl App {
     }
 }
 
+#[cfg(test)]
+mod t {
+    mod with_parents {
+        use super::super::*;
 
+        /// The empty string is not a valid dataset, but make sure nothing bad
+        /// happens anyway
+        #[test]
+        fn empty() {
+            let ds = "";
+            let actual = DataSource::with_parents(ds).collect::<Vec<_>>();
+            assert!(actual.is_empty());
+        }
+
+        #[test]
+        fn pool() {
+            let ds = "zroot";
+            let expected = ["zroot"];
+            let actual = DataSource::with_parents(ds).collect::<Vec<_>>();
+            assert_eq!(&expected[..], &actual[..]);
+        }
+
+        #[test]
+        fn one_level() {
+            let ds = "zroot/ROOT";
+            let expected = ["zroot", "zroot/ROOT"];
+            let actual = DataSource::with_parents(ds).collect::<Vec<_>>();
+            assert_eq!(&expected[..], &actual[..]);
+        }
+
+        #[test]
+        fn two_levels() {
+            let ds = "zroot/ROOT/13.0-RELEASE";
+            let expected = ["zroot", "zroot/ROOT", "zroot/ROOT/13.0-RELEASE"];
+            let actual = DataSource::with_parents(ds).collect::<Vec<_>>();
+            assert_eq!(&expected[..], &actual[..]);
+        }
+
+    }
+}

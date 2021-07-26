@@ -33,6 +33,9 @@ struct Cli {
     /// only display datasets that have some activity.
     #[structopt(short = "a")]
     auto: bool,
+    /// Include child datasets' stats with their parents'.
+    #[structopt(short = "c")]
+    children: bool,
     /// display datasets no more than this many levels deep.
     #[structopt(short = "d")]
     depth: Option<NonZeroUsize>,
@@ -188,7 +191,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cli: Cli = Cli::from_args();
     let mut editting_filter = false;
     let mut tick_rate = cli.time.unwrap_or(Duration::from_secs(1));
-    let mut app = App::new(cli.auto, cli.pools, cli.depth, cli.filter);
+    let mut app = App::new(cli.auto, cli.children, cli.pools, cli.depth,
+                           cli.filter);
     let mut filter_popup = FilterPopup::default();
     let stdout = io::stdout().into_raw_mode()?;
 
@@ -237,6 +241,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             Some(Event::Key(Key::Char('a'))) => {
                 app.on_a();
+            }
+            Some(Event::Key(Key::Char('c'))) => {
+                app.on_c();
             }
             Some(Event::Key(Key::Char('D'))) => {
                 app.on_d(false);
