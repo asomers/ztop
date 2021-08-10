@@ -37,10 +37,8 @@ task:
     - rustup component add clippy
     - cargo clippy --all-features --all-targets -- -D warnings
   # Test our minimal version spec
-  # Disabled until sysctl-rs fixes its own build
-  # https://github.com/johalun/sysctl-rs/pull/37
-  #minver_test_script:
-  #- . $HOME/.cargo/env
-  #- cargo update -Zminimal-versions
-  #- cargo check --all-targets
+  minver_test_script:
+    - . $HOME/.cargo/env
+    - cargo update -Zminimal-versions
+    - cargo check --all-targets
   before_cache_script: rm -rf $HOME/.cargo/registry/index
