@@ -154,7 +154,11 @@ impl SysctlIter {
                     std::process::exit(1);
                 })
         } else {
-            Ctl::new("kstat.zfs").unwrap()
+            Ctl::new("kstat.zfs")
+                .unwrap_or_else(|_e| {
+                    eprintln!("ZFS kernel module not loaded?");
+                    std::process::exit(1);
+                })
         };
         Self(CtlIter::below(root))
     }
