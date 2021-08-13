@@ -43,18 +43,19 @@ impl Builder {
         };
     }
 
-    fn finish(mut self) -> Snapshot {
-        Snapshot {
-            name: self.dataset_name.take().unwrap(),
-            // On FreeBSD 12.2 and earlier, unlinked and nunlinks will not be
-            // present.  Set them to zero.
-            nunlinked: self.nunlinked.take().unwrap_or(0),
-            nunlinks: self.nunlinks.take().unwrap_or(0),
-            nread: self.nread.take().unwrap(),
-            reads: self.reads.take().unwrap(),
-            nwritten: self.nwritten.take().unwrap(),
-            writes: self.writes.take().unwrap(),
-        }
+    fn finish(mut self) -> Option<Snapshot> {
+        let name = self.dataset_name.take()?;
+        // On FreeBSD 12.2 and earlier, unlinked and nunlinks will not be
+        // present.  Set them to zero.
+        let nunlinked = self.nunlinked.take().unwrap_or(0);
+        let nunlinks = self.nunlinks.take().unwrap_or(0);
+        let nread = self.nread.take()?;
+        let reads = self.reads.take()?;
+        let nwritten = self.nwritten.take()?;
+        let writes = self.writes.take()?;
+        Some(Snapshot {
+            name, nunlinked, nunlinks, nread, reads, nwritten, writes
+        })
     }
 }
 
@@ -105,7 +106,7 @@ impl SnapshotIter {
                 let new = Builder::default();
                 let old = mem::replace(&mut self.builder, new);
                 self.builder.build(&name, value);
-                Some(old.finish())
+                old.finish()
             }
         }
     }
@@ -135,7 +136,7 @@ impl Iterator for SnapshotIter {
                     self.finished = true;
                     let new = Builder::default();
                     let old = mem::replace(&mut self.builder, new);
-                    break Some(Ok(old.finish()));
+                    break old.finish().map(Ok);
                 }
             }
         }
@@ -154,7 +155,11 @@ impl SysctlIter {
                     std::process::exit(1);
                 })
         } else {
-            Ctl::new("kstat.zfs").unwrap()
+            Ctl::new("kstat.zfs")
+                .unwrap_or_else(|_e| {
+                    eprintln!("ZFS kernel module not loaded?");
+                    std::process::exit(1);
+                })
         };
         Self(CtlIter::below(root))
     }
@@ -219,7 +224,7 @@ mod t {
             for (n, v) in names.zip(values) {
                 builder.build(n, v);
             }
-            let r = builder.finish();
+            let r = builder.finish().unwrap();
             assert_eq!(r.name, "tank/foo");
             assert_eq!(r.nunlinked, 0);
             assert_eq!(r.nunlinks, 0);
@@ -254,7 +259,7 @@ mod t {
             for (n, v) in names.zip(values) {
                 builder.build(n, v);
             }
-            let r = builder.finish();
+            let r = builder.finish().unwrap();
             assert_eq!(r.name, "tank/foo");
             assert_eq!(r.nunlinked, 1);
             assert_eq!(r.nunlinks, 2);
@@ -267,6 +272,15 @@ mod t {
 
     mod snapshot_iter {
         use super::super::*;
+
+        /// No datasets are present
+        #[test]
+        fn empty()
+        {
+            let kv = std::iter::empty();
+            let mut iter = SnapshotIter::with_inner(kv);
+            assert!(iter.next().is_none());
+        }
 
         #[test]
         fn like_freebsd_12_2()
