@@ -44,11 +44,17 @@ task:
     - . $HOME/.cargo/env
     - cargo update -Zminimal-versions
     - cargo check --all-targets
+  fmt_script:
+    - . $HOME/.cargo/env
+    - rustup component add rustfmt
+    - cargo fmt --all -- --check --color=never
   before_cache_script: rm -rf $HOME/.cargo/registry/index
 
 task:
   name: Linux MSRV
   container:
     image: rust:1.53.0
+  setup_script:
+    - rustup component add rustfmt
   << : *BUILD
   before_cache_script: rm -rf $HOME/.cargo/registry/index

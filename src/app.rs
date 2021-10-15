@@ -1,18 +1,19 @@
 // vim: tw=80
-use cfg_if::cfg_if;
-use ieee754::Ieee754;
-use nix::{
-    sys::time::TimeSpec,
-    time::{ClockId, clock_gettime},
-};
-use regex::Regex;
 use std::{
     collections::{btree_map, BTreeMap},
     error::Error,
     mem,
     num::NonZeroUsize,
-    ops::AddAssign
+    ops::AddAssign,
 };
+
+use cfg_if::cfg_if;
+use ieee754::Ieee754;
+use nix::{
+    sys::time::TimeSpec,
+    time::{clock_gettime, ClockId},
+};
+use regex::Regex;
 
 cfg_if! {
     if #[cfg(target_os = "freebsd")] {
@@ -31,36 +32,36 @@ cfg_if! {
 /// The various fields are not saved atomically, but ought to be close.
 #[derive(Clone, Debug)]
 struct Snapshot {
-    name: String,
+    name:      String,
     nunlinked: u64,
-    nunlinks: u64,
-    nread: u64,
-    reads: u64,
-    nwritten: u64,
-    writes: u64,
+    nunlinks:  u64,
+    nread:     u64,
+    reads:     u64,
+    nwritten:  u64,
+    writes:    u64,
 }
 
 impl Snapshot {
     fn compute(&self, prev: Option<&Self>, etime: f64) -> Element {
         if let Some(prev) = prev {
             Element {
-                name: self.name.clone(),
-                ops_r: (self.reads - prev.reads ) as f64 / etime,
-                r_s: (self.nread - prev.nread ) as f64 / etime,
-                ops_w: (self.writes - prev.writes ) as f64 / etime,
-                w_s: (self.nwritten - prev.nwritten ) as f64 / etime,
-                ops_d: (self.nunlinks - prev.nunlinks ) as f64 / etime,
-                d_s: (self.nunlinked - prev.nunlinked ) as f64 / etime,
+                name:  self.name.clone(),
+                ops_r: (self.reads - prev.reads) as f64 / etime,
+                r_s:   (self.nread - prev.nread) as f64 / etime,
+                ops_w: (self.writes - prev.writes) as f64 / etime,
+                w_s:   (self.nwritten - prev.nwritten) as f64 / etime,
+                ops_d: (self.nunlinks - prev.nunlinks) as f64 / etime,
+                d_s:   (self.nunlinked - prev.nunlinked) as f64 / etime,
             }
         } else {
             Element {
-                name: self.name.clone(),
+                name:  self.name.clone(),
                 ops_r: self.reads as f64 / etime,
-                r_s: self.nread as f64 / etime,
+                r_s:   self.nread as f64 / etime,
                 ops_w: self.writes as f64 / etime,
-                w_s: self.nwritten as f64 / etime,
+                w_s:   self.nwritten as f64 / etime,
                 ops_d: self.nunlinks as f64 / etime,
-                d_s: self.nunlinked as f64 / etime,
+                d_s:   self.nunlinked as f64 / etime,
             }
         }
     }
@@ -75,10 +76,11 @@ impl Snapshot {
 }
 
 impl AddAssign<&Self> for Snapshot {
-
     fn add_assign(&mut self, other: &Self) {
-        assert!(other.name.starts_with(&self.name),
-            "Why would you want to combine two unrelated datasets?");
+        assert!(
+            other.name.starts_with(&self.name),
+            "Why would you want to combine two unrelated datasets?"
+        );
         self.nunlinked += other.nunlinked;
         self.nunlinks += other.nunlinks;
         self.nread += other.nread;
@@ -91,11 +93,11 @@ impl AddAssign<&Self> for Snapshot {
 #[derive(Default)]
 struct DataSource {
     children: bool,
-    prev: BTreeMap<String, Snapshot>,
-    prev_ts: Option<TimeSpec>,
-    cur: BTreeMap<String, Snapshot>,
-    cur_ts: Option<TimeSpec>,
-    pools: Vec<String>
+    prev:     BTreeMap<String, Snapshot>,
+    prev_ts:  Option<TimeSpec>,
+    cur:      BTreeMap<String, Snapshot>,
+    cur_ts:   Option<TimeSpec>,
+    pools:    Vec<String>,
 }
 
 impl DataSource {
@@ -103,12 +105,12 @@ impl DataSource {
         DataSource {
             children,
             pools,
-            .. Default::default()
+            ..Default::default()
         }
     }
 
     /// Iterate through all the datasets, returning current stats
-    fn iter(&mut self) -> impl Iterator<Item=Element> + '_ {
+    fn iter(&mut self) -> impl Iterator<Item = Element> + '_ {
         let etime = if let Some(prev_ts) = self.prev_ts.as_ref() {
             let delta = *self.cur_ts.as_ref().unwrap() - *prev_ts;
             delta.tv_sec() as f64 + delta.tv_nsec() as f64 * 1e-9
@@ -119,22 +121,21 @@ impl DataSource {
         DataSourceIter {
             inner_iter: self.cur.iter(),
             ds: self,
-            etime
+            etime,
         }
     }
 
     /// Iterate over all of the names of parent datasets of the argument
-    fn with_parents(s: &str) -> impl Iterator<Item=&str> {
-        s.char_indices()
-            .filter_map(move |(idx, c)| {
-                if c == '/' {
-                    Some(s.split_at(idx).0)
-                } else if idx == s.len() - 1 {
-                    Some(s)
-                } else {
-                    None
-                }
-            })
+    fn with_parents(s: &str) -> impl Iterator<Item = &str> {
+        s.char_indices().filter_map(move |(idx, c)| {
+            if c == '/' {
+                Some(s.split_at(idx).0)
+            } else if idx == s.len() - 1 {
+                Some(s)
+            } else {
+                None
+            }
+        })
     }
 
     fn refresh(&mut self) -> Result<(), Box<dyn Error>> {
@@ -171,33 +172,33 @@ impl DataSource {
     fn upsert(
         cur: &mut BTreeMap<String, Snapshot>,
         ss: Snapshot,
-        children: bool)
-    {
+        children: bool,
+    ) {
         if children {
             for dsname in Self::with_parents(&ss.name) {
                 match cur.entry(dsname.to_string()) {
-                   btree_map::Entry::Vacant(ve) => {
-                       if ss.name == dsname {
-                           ve.insert(ss.clone());
-                       } else {
-                           let mut parent_ss = ss.clone();
-                           parent_ss.name = dsname.to_string();
-                           ve.insert(parent_ss);
-                       }
-                   }
-                   btree_map::Entry::Occupied(mut oe) => {
-                       *oe.get_mut() += &ss;
-                   }
+                    btree_map::Entry::Vacant(ve) => {
+                        if ss.name == dsname {
+                            ve.insert(ss.clone());
+                        } else {
+                            let mut parent_ss = ss.clone();
+                            parent_ss.name = dsname.to_string();
+                            ve.insert(parent_ss);
+                        }
+                    }
+                    btree_map::Entry::Occupied(mut oe) => {
+                        *oe.get_mut() += &ss;
+                    }
                 }
             }
         } else {
             match cur.entry(ss.name.clone()) {
-               btree_map::Entry::Vacant(ve) => {
-                   ve.insert(ss);
-               }
-               btree_map::Entry::Occupied(mut oe) => {
-                   *oe.get_mut() += &ss;
-               }
+                btree_map::Entry::Vacant(ve) => {
+                    ve.insert(ss);
+                }
+                btree_map::Entry::Occupied(mut oe) => {
+                    *oe.get_mut() += &ss;
+                }
             }
         };
     }
@@ -205,15 +206,16 @@ impl DataSource {
 
 struct DataSourceIter<'a> {
     inner_iter: btree_map::Iter<'a, String, Snapshot>,
-    ds: &'a DataSource,
-    etime: f64
+    ds:         &'a DataSource,
+    etime:      f64,
 }
 
 impl<'a> Iterator for DataSourceIter<'a> {
     type Item = Element;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner_iter.next()
+        self.inner_iter
+            .next()
             .map(|(_, ss)| ss.compute(self.ds.prev.get(&ss.name), self.etime))
     }
 }
@@ -221,31 +223,31 @@ impl<'a> Iterator for DataSourceIter<'a> {
 /// One thing to display in the table
 #[derive(Clone, Debug)]
 pub struct Element {
-    pub name: String,
+    pub name:  String,
     /// Read IOPs
     pub ops_r: f64,
     /// Read B/s
-    pub r_s: f64,
+    pub r_s:   f64,
     /// Delete IOPs
     pub ops_d: f64,
     /// Delete B/s
-    pub d_s: f64,
+    pub d_s:   f64,
     /// Write IOPs
     pub ops_w: f64,
     /// Write B/s
-    pub w_s: f64,
+    pub w_s:   f64,
 }
 
 #[derive(Default)]
 pub struct App {
-    auto: bool,
-    data: DataSource,
-    depth: Option<NonZeroUsize>,
-    filter: Option<Regex>,
-    reverse: bool,
+    auto:        bool,
+    data:        DataSource,
+    depth:       Option<NonZeroUsize>,
+    filter:      Option<Regex>,
+    reverse:     bool,
     should_quit: bool,
     /// 0-based index of the column to sort by, if any
-    sort_idx: Option<usize>
+    sort_idx:    Option<usize>,
 }
 
 impl App {
@@ -256,7 +258,7 @@ impl App {
         depth: Option<NonZeroUsize>,
         filter: Option<Regex>,
         reverse: bool,
-        sort_idx: Option<usize>
+        sort_idx: Option<usize>,
     ) -> Self {
         let mut data = DataSource::new(children, pools);
         data.refresh().unwrap();
@@ -267,7 +269,7 @@ impl App {
             filter,
             reverse,
             sort_idx,
-            .. Default::default()
+            ..Default::default()
         }
     }
 
@@ -276,6 +278,7 @@ impl App {
     }
 
     /// Return the elements that should be displayed, in order
+    #[rustfmt::skip]
     pub fn elements(&mut self) -> Vec<Element> {
         let auto = self.auto;
         let depth = self.depth;
@@ -329,12 +332,12 @@ impl App {
         self.depth = if more_depth {
             match self.depth {
                 None => NonZeroUsize::new(1),
-                Some(x) => NonZeroUsize::new(x.get() + 1)
+                Some(x) => NonZeroUsize::new(x.get() + 1),
             }
         } else {
             match self.depth {
                 None => None,
-                Some(x) => NonZeroUsize::new(x.get() - 1)
+                Some(x) => NonZeroUsize::new(x.get() - 1),
             }
         }
     }
@@ -343,7 +346,7 @@ impl App {
         self.sort_idx = match self.sort_idx {
             Some(0) => None,
             Some(old) => Some(old - 1),
-            None => Some(6)
+            None => Some(6),
         }
     }
 
@@ -351,7 +354,7 @@ impl App {
         self.sort_idx = match self.sort_idx {
             Some(old) if old >= 6 => None,
             Some(old) => Some(old + 1),
-            None => Some(0)
+            None => Some(0),
         }
     }
 
@@ -417,6 +420,5 @@ mod t {
             let actual = DataSource::with_parents(ds).collect::<Vec<_>>();
             assert_eq!(&expected[..], &actual[..]);
         }
-
     }
 }

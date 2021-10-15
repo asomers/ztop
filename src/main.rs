@@ -1,18 +1,9 @@
 // vim: tw=80
+use std::{array, error::Error, io, num::NonZeroUsize, time::Duration};
+
 use regex::Regex;
 use structopt::StructOpt;
-use std::{
-    array,
-    error::Error,
-    io,
-    num::NonZeroUsize,
-    time::Duration
-};
-use termion::{
-    event::Key,
-    input::MouseTerminal,
-    raw::IntoRawMode,
-};
+use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode};
 use tui::{
     backend::TermionBackend,
     layout::{Constraint, Direction, Layout, Rect},
@@ -24,7 +15,7 @@ use tui::{
 mod app;
 use self::app::App;
 mod event;
-use self::event::{Events, Event};
+use self::event::{Event, Events};
 
 /// Display ZFS datasets' I/O in real time
 // TODO: shorten the help options so they fit on 80 columns.
@@ -32,28 +23,28 @@ use self::event::{Events, Event};
 struct Cli {
     /// only display datasets that have some activity.
     #[structopt(short = "a", long = "auto", verbatim_doc_comment)]
-    auto: bool,
+    auto:     bool,
     /// Include child datasets' stats with their parents'.
     #[structopt(short = "c", long = "children")]
     children: bool,
     /// display datasets no more than this many levels deep.
     #[structopt(short = "d", long = "depth")]
-    depth: Option<NonZeroUsize>,
+    depth:    Option<NonZeroUsize>,
     /// only display datasets with names matching filter, as a regex.
     #[structopt(short = "f", parse(try_from_str = Regex::new), long = "filter")]
-    filter: Option<Regex>,
+    filter:   Option<Regex>,
     /// display update interval, in seconds or with the specified unit
     #[structopt(short = "t", parse(try_from_str = Cli::duration_from_str),
         long = "time")]
-    time: Option<Duration>,
+    time:     Option<Duration>,
     /// Reverse the sort
     #[structopt(short = "r", long = "reverse")]
-    reverse: bool,
+    reverse:  bool,
     /// Sort by the named column.  The name should match the column header.
     #[structopt(short = "s", long = "sort")]
-    sort: Option<String>,
+    sort:     Option<String>,
     /// Display these pools and their children
-    pools: Vec<String>,
+    pools:    Vec<String>,
 }
 
 impl Cli {
@@ -69,7 +60,7 @@ impl Cli {
 
 #[derive(Clone, Debug, Default)]
 pub struct FilterPopup {
-    new_regex: String
+    new_regex: String,
 }
 
 impl FilterPopup {
@@ -91,11 +82,9 @@ impl FilterPopup {
 }
 
 mod ui {
+    use tui::{backend::Backend, Frame};
+
     use super::*;
-    use tui::{
-        backend::Backend,
-        Frame
-    };
 
     // helper function to create a one-line popup box
     fn popup_layout(x: u16, y: u16, r: Rect) -> Rect {
@@ -103,9 +92,9 @@ mod ui {
             .direction(Direction::Vertical)
             .constraints(
                 [
-                    Constraint::Max(r.height.saturating_sub(y)/2),
+                    Constraint::Max(r.height.saturating_sub(y) / 2),
                     Constraint::Length(y),
-                    Constraint::Max(r.height.saturating_sub(y)/2),
+                    Constraint::Max(r.height.saturating_sub(y) / 2),
                 ]
                 .as_ref(),
             )
@@ -135,27 +124,31 @@ mod ui {
             Cell::from("   d/s"),
             Cell::from("kB/s d"),
             Cell::from("Dataset"),
-        ]).enumerate()
-            .map(|(i, cell)| {
-                if Some(i) == app.sort_idx() {
-                    cell.style(sstyle)
-                } else {
-                    cell.style(hstyle)
-                }
-            });
-        let header = Row::new(hcells)
-            .style(Style::default().bg(Color::Blue));
-        let rows = app.elements()
+        ])
+        .enumerate()
+        .map(|(i, cell)| {
+            if Some(i) == app.sort_idx() {
+                cell.style(sstyle)
+            } else {
+                cell.style(hstyle)
+            }
+        });
+        let header = Row::new(hcells).style(Style::default().bg(Color::Blue));
+        let rows = app
+            .elements()
             .into_iter()
-            .map(|elem| Row::new([
-                Cell::from(format!("{:>6.0}", elem.ops_r)),
-                Cell::from(format!("{:>7.0}", elem.r_s / 1024.0)),
-                Cell::from(format!("{:>6.0}", elem.ops_w)),
-                Cell::from(format!("{:>7.0}", elem.w_s / 1024.0)),
-                Cell::from(format!("{:>6.0}", elem.ops_d)),
-                Cell::from(format!("{:>6.0}", elem.d_s / 1024.0)),
-                Cell::from(elem.name),
-            ])).collect::<Vec<_>>();
+            .map(|elem| {
+                Row::new([
+                    Cell::from(format!("{:>6.0}", elem.ops_r)),
+                    Cell::from(format!("{:>7.0}", elem.r_s / 1024.0)),
+                    Cell::from(format!("{:>6.0}", elem.ops_w)),
+                    Cell::from(format!("{:>7.0}", elem.w_s / 1024.0)),
+                    Cell::from(format!("{:>6.0}", elem.ops_d)),
+                    Cell::from(format!("{:>6.0}", elem.d_s / 1024.0)),
+                    Cell::from(elem.name),
+                ])
+            })
+            .collect::<Vec<_>>();
         let widths = [
             Constraint::Length(7),
             Constraint::Length(8),
@@ -172,6 +165,7 @@ mod ui {
         f.render_widget(t, f.size());
     }
 
+    #[rustfmt::skip]
     pub fn draw_filter<B: Backend>(f: &mut Frame<B>, app: &mut FilterPopup) {
         let area = popup_layout(40, 3, f.size());
         let popup_box = Paragraph::new(app.new_regex.as_ref())
@@ -195,7 +189,7 @@ mod ui {
             "d/s" => Some(4),
             "kB/s d" => Some(5),
             "Dataset" => Some(6),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -207,8 +201,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut editting_filter = false;
     let mut tick_rate = cli.time.unwrap_or(Duration::from_secs(1));
     let col_idx = cli.sort.as_ref().map(ui::col_idx).unwrap_or(None);
-    let mut app = App::new(cli.auto, cli.children, cli.pools, cli.depth,
-                           cli.filter, cli.reverse, col_idx);
+    let mut app = App::new(
+        cli.auto,
+        cli.children,
+        cli.pools,
+        cli.depth,
+        cli.filter,
+        cli.reverse,
+        col_idx,
+    );
     let mut filter_popup = FilterPopup::default();
     let stdout = io::stdout().into_raw_mode()?;
 
@@ -225,7 +226,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             ui::draw(f, &mut app);
             if editting_filter {
                 ui::draw_filter(f, &mut filter_popup)
-             }
+            }
         })?;
 
         match events.poll(&tick_rate) {
@@ -285,7 +286,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             None => {
                 // stdin closed for some reason
                 break;
-            },
+            }
             _ => {
                 // Ignore unknown events
             }

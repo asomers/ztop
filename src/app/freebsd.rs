@@ -1,20 +1,19 @@
 // vim: tw=80
-use std::{
-    error::Error,
-    mem
-};
+use std::{error::Error, mem};
+
+use sysctl::{Ctl, CtlIter, CtlValue, Sysctl, SysctlError};
+
 use super::Snapshot;
-use sysctl::{Ctl, CtlIter, Sysctl, SysctlError, CtlValue};
 
 #[derive(Default)]
 struct Builder {
     dataset_name: Option<String>,
-    nunlinked: Option<u64>,
-    nunlinks: Option<u64>,
-    nread: Option<u64>,
-    reads: Option<u64>,
-    nwritten: Option<u64>,
-    writes: Option<u64>,
+    nunlinked:    Option<u64>,
+    nunlinks:     Option<u64>,
+    nread:        Option<u64>,
+    reads:        Option<u64>,
+    nwritten:     Option<u64>,
+    writes:       Option<u64>,
 }
 
 impl Builder {
@@ -27,17 +26,27 @@ impl Builder {
                     eprintln!("Unknown sysctl {:?}", name);
                 }
                 assert_eq!(self.dataset_name.replace(s), None);
-            },
-            CtlValue::U64(x) => {
-                match field {
-                    "nunlinked" => {self.nunlinked = Some(x);}
-                    "nunlinks" => {self.nunlinks = Some(x);}
-                    "nread" => {self.nread = Some(x);}
-                    "reads" => {self.reads = Some(x);}
-                    "nwritten" => {self.nwritten = Some(x);}
-                    "writes" => {self.writes = Some(x);}
-                    _ => eprintln!("Unknown sysctl {:?}", name),
+            }
+            CtlValue::U64(x) => match field {
+                "nunlinked" => {
+                    self.nunlinked = Some(x);
                 }
+                "nunlinks" => {
+                    self.nunlinks = Some(x);
+                }
+                "nread" => {
+                    self.nread = Some(x);
+                }
+                "reads" => {
+                    self.reads = Some(x);
+                }
+                "nwritten" => {
+                    self.nwritten = Some(x);
+                }
+                "writes" => {
+                    self.writes = Some(x);
+                }
+                _ => eprintln!("Unknown sysctl {:?}", name),
             },
             _ => eprintln!("Unknown sysctl {:?}", name),
         };
@@ -54,16 +63,22 @@ impl Builder {
         let nwritten = self.nwritten.take()?;
         let writes = self.writes.take()?;
         Some(Snapshot {
-            name, nunlinked, nunlinks, nread, reads, nwritten, writes
+            name,
+            nunlinked,
+            nunlinks,
+            nread,
+            reads,
+            nwritten,
+            writes,
         })
     }
 }
 
 pub(super) struct SnapshotIter {
-    inner: Box<dyn Iterator<Item=Result<(String, CtlValue), SysctlError>>>,
+    inner: Box<dyn Iterator<Item = Result<(String, CtlValue), SysctlError>>>,
     objset_name: Option<String>,
-    finished: bool,
-    builder: Builder
+    finished:    bool,
+    builder:     Builder,
 }
 
 impl SnapshotIter {
@@ -72,13 +87,14 @@ impl SnapshotIter {
     }
 
     fn with_inner<T>(inner: T) -> Self
-        where T: Iterator<Item=Result<(String, CtlValue), SysctlError>> + 'static
+    where
+        T: Iterator<Item = Result<(String, CtlValue), SysctlError>> + 'static,
     {
         SnapshotIter {
-            inner: Box::new(inner),
+            inner:       Box::new(inner),
             objset_name: None,
-            finished: false,
-            builder: Builder::default()
+            finished:    false,
+            builder:     Builder::default(),
         }
     }
 
@@ -96,11 +112,11 @@ impl SnapshotIter {
                 self.builder.build(&name, value);
                 self.objset_name = Some(on.to_owned());
                 None
-            },
+            }
             Some(son) if son == on => {
                 self.builder.build(&name, value);
                 None
-            },
+            }
             _ => {
                 self.objset_name = Some(on.to_owned());
                 let new = Builder::default();
@@ -110,11 +126,10 @@ impl SnapshotIter {
             }
         }
     }
-
 }
 
 impl Iterator for SnapshotIter {
-    type Item=Result<Snapshot, Box<dyn Error>>;
+    type Item = Result<Snapshot, Box<dyn Error>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // We need to read several values from the internal iterator to assemble
@@ -131,7 +146,7 @@ impl Iterator for SnapshotIter {
                     }
                     // else continue
                 }
-                Some(Err(e)) => {break Some(Err(Box::new(e)))},
+                Some(Err(e)) => break Some(Err(Box::new(e))),
                 None => {
                     self.finished = true;
                     let new = Builder::default();
@@ -155,11 +170,10 @@ impl SysctlIter {
                     std::process::exit(1);
                 })
         } else {
-            Ctl::new("kstat.zfs")
-                .unwrap_or_else(|_e| {
-                    eprintln!("ZFS kernel module not loaded?");
-                    std::process::exit(1);
-                })
+            Ctl::new("kstat.zfs").unwrap_or_else(|_e| {
+                eprintln!("ZFS kernel module not loaded?");
+                std::process::exit(1);
+            })
         };
         Self(CtlIter::below(root))
     }
@@ -170,29 +184,31 @@ impl Iterator for SysctlIter {
 
     /// Return the next Ctl that ztop cares about
     fn next(&mut self) -> Option<Self::Item> {
-        loop  {
+        loop {
             match self.0.next() {
-                Some(Ok(ctl)) => {
-                    match ctl.name() {
-                        Ok(name) => {
-                            if name.splitn(4, '.')
-                                .last()
-                                .map(|l| l.starts_with("dataset"))
-                                .unwrap_or(false)
-                            {
-                                break Some(
-                                    ctl.value()
-                                    .map(|v| (name, v))
-                                )
-                            } else {
-                                continue;
-                            }
+                Some(Ok(ctl)) => match ctl.name() {
+                    Ok(name) => {
+                        if name
+                            .splitn(4, '.')
+                            .last()
+                            .map(|l| l.starts_with("dataset"))
+                            .unwrap_or(false)
+                        {
+                            break Some(ctl.value().map(|v| (name, v)));
+                        } else {
+                            continue;
                         }
-                        Err(e) => {return Some(Err(e));}
                     }
+                    Err(e) => {
+                        return Some(Err(e));
+                    }
+                },
+                Some(Err(e)) => {
+                    return Some(Err(e));
                 }
-                Some(Err(e)) => {return Some(Err(e));}
-                None => {return None;}
+                None => {
+                    return None;
+                }
             }
         }
     }
@@ -204,22 +220,23 @@ mod t {
         use super::super::*;
 
         #[test]
-        fn like_freebsd_12_2()
-        {
+        fn like_freebsd_12_2() {
             let names = vec![
                 "kstat.zfs.tank.dataset.objset-0x58c.nread",
                 "kstat.zfs.tank.dataset.objset-0x58c.reads",
                 "kstat.zfs.tank.dataset.objset-0x58c.nwritten",
                 "kstat.zfs.tank.dataset.objset-0x58c.writes",
-                "kstat.zfs.tank.dataset.objset-0x58c.dataset_name"
-            ].into_iter();
+                "kstat.zfs.tank.dataset.objset-0x58c.dataset_name",
+            ]
+            .into_iter();
             let values = vec![
                 CtlValue::U64(3),
                 CtlValue::U64(4),
                 CtlValue::U64(5),
                 CtlValue::U64(6),
-                CtlValue::String("tank/foo".to_owned())
-            ].into_iter();
+                CtlValue::String("tank/foo".to_owned()),
+            ]
+            .into_iter();
             let mut builder = Builder::default();
             for (n, v) in names.zip(values) {
                 builder.build(n, v);
@@ -235,8 +252,7 @@ mod t {
         }
 
         #[test]
-        fn like_freebsd_13_0()
-        {
+        fn like_freebsd_13_0() {
             let names = vec![
                 "kstat.zfs.tank.dataset.objset-0x58c.nunlinked",
                 "kstat.zfs.tank.dataset.objset-0x58c.nunlinks",
@@ -244,8 +260,9 @@ mod t {
                 "kstat.zfs.tank.dataset.objset-0x58c.reads",
                 "kstat.zfs.tank.dataset.objset-0x58c.nwritten",
                 "kstat.zfs.tank.dataset.objset-0x58c.writes",
-                "kstat.zfs.tank.dataset.objset-0x58c.dataset_name"
-            ].into_iter();
+                "kstat.zfs.tank.dataset.objset-0x58c.dataset_name",
+            ]
+            .into_iter();
             let values = vec![
                 CtlValue::U64(1),
                 CtlValue::U64(2),
@@ -253,8 +270,9 @@ mod t {
                 CtlValue::U64(4),
                 CtlValue::U64(5),
                 CtlValue::U64(6),
-                CtlValue::String("tank/foo".to_owned())
-            ].into_iter();
+                CtlValue::String("tank/foo".to_owned()),
+            ]
+            .into_iter();
             let mut builder = Builder::default();
             for (n, v) in names.zip(values) {
                 builder.build(n, v);
@@ -275,40 +293,59 @@ mod t {
 
         /// No datasets are present
         #[test]
-        fn empty()
-        {
+        fn empty() {
             let kv = std::iter::empty();
             let mut iter = SnapshotIter::with_inner(kv);
             assert!(iter.next().is_none());
         }
 
         #[test]
-        fn like_freebsd_12_2()
-        {
+        fn like_freebsd_12_2() {
             let kv = vec![
-                ("kstat.zfs.tank.dataset.objset-0x58c.nread".to_string(),
-                CtlValue::U64(1)),
-                ("kstat.zfs.tank.dataset.objset-0x58c.reads".to_string(),
-                CtlValue::U64(2)),
-                ("kstat.zfs.tank.dataset.objset-0x58c.nwritten".to_string(),
-                CtlValue::U64(3)),
-                ("kstat.zfs.tank.dataset.objset-0x58c.writes".to_string(),
-                CtlValue::U64(4)),
-                ("kstat.zfs.tank.dataset.objset-0x58c.dataset_name".to_string(),
-
-                CtlValue::String("tank/foo".to_string())),
-                ("kstat.zfs.tank.dataset.objset-0x58d.nread".to_string(),
-                CtlValue::U64(11)),
-                ("kstat.zfs.tank.dataset.objset-0x58d.reads".to_string(),
-                CtlValue::U64(12)),
-                ("kstat.zfs.tank.dataset.objset-0x58d.nwritten".to_string(),
-                CtlValue::U64(13)),
-                ("kstat.zfs.tank.dataset.objset-0x58d.writes".to_string(),
-                CtlValue::U64(14)),
-                ("kstat.zfs.tank.dataset.objset-0x58d.dataset_name".to_string(),
-
-                CtlValue::String("tank/bar".to_string())),
-            ].into_iter()
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.nread".to_string(),
+                    CtlValue::U64(1),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.reads".to_string(),
+                    CtlValue::U64(2),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.nwritten".to_string(),
+                    CtlValue::U64(3),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.writes".to_string(),
+                    CtlValue::U64(4),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.dataset_name"
+                        .to_string(),
+                    CtlValue::String("tank/foo".to_string()),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.nread".to_string(),
+                    CtlValue::U64(11),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.reads".to_string(),
+                    CtlValue::U64(12),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.nwritten".to_string(),
+                    CtlValue::U64(13),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.writes".to_string(),
+                    CtlValue::U64(14),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.dataset_name"
+                        .to_string(),
+                    CtlValue::String("tank/bar".to_string()),
+                ),
+            ]
+            .into_iter()
             .map(Ok);
             let mut iter = SnapshotIter::with_inner(kv);
             let ss = iter.next().unwrap().unwrap();
@@ -331,40 +368,68 @@ mod t {
         }
 
         #[test]
-        fn like_freebsd_13_0()
-        {
+        fn like_freebsd_13_0() {
             let kv = vec![
-                ("kstat.zfs.tank.dataset.objset-0x58c.nunlinked".to_string(),
-                CtlValue::U64(5)),
-                ("kstat.zfs.tank.dataset.objset-0x58c.nunlinks".to_string(),
-                CtlValue::U64(6)),
-                ("kstat.zfs.tank.dataset.objset-0x58c.nread".to_string(),
-                CtlValue::U64(1)),
-                ("kstat.zfs.tank.dataset.objset-0x58c.reads".to_string(),
-                CtlValue::U64(2)),
-                ("kstat.zfs.tank.dataset.objset-0x58c.nwritten".to_string(),
-                CtlValue::U64(3)),
-                ("kstat.zfs.tank.dataset.objset-0x58c.writes".to_string(),
-                CtlValue::U64(4)),
-                ("kstat.zfs.tank.dataset.objset-0x58c.dataset_name".to_string(),
-
-                CtlValue::String("tank/foo".to_string())),
-                ("kstat.zfs.tank.dataset.objset-0x58d.nunlinked".to_string(),
-                CtlValue::U64(15)),
-                ("kstat.zfs.tank.dataset.objset-0x58d.nunlinks".to_string(),
-                CtlValue::U64(16)),
-                ("kstat.zfs.tank.dataset.objset-0x58d.nread".to_string(),
-                CtlValue::U64(11)),
-                ("kstat.zfs.tank.dataset.objset-0x58d.reads".to_string(),
-                CtlValue::U64(12)),
-                ("kstat.zfs.tank.dataset.objset-0x58d.nwritten".to_string(),
-                CtlValue::U64(13)),
-                ("kstat.zfs.tank.dataset.objset-0x58d.writes".to_string(),
-                CtlValue::U64(14)),
-                ("kstat.zfs.tank.dataset.objset-0x58d.dataset_name".to_string(),
-
-                CtlValue::String("tank/bar".to_string())),
-            ].into_iter()
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.nunlinked".to_string(),
+                    CtlValue::U64(5),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.nunlinks".to_string(),
+                    CtlValue::U64(6),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.nread".to_string(),
+                    CtlValue::U64(1),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.reads".to_string(),
+                    CtlValue::U64(2),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.nwritten".to_string(),
+                    CtlValue::U64(3),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.writes".to_string(),
+                    CtlValue::U64(4),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58c.dataset_name"
+                        .to_string(),
+                    CtlValue::String("tank/foo".to_string()),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.nunlinked".to_string(),
+                    CtlValue::U64(15),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.nunlinks".to_string(),
+                    CtlValue::U64(16),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.nread".to_string(),
+                    CtlValue::U64(11),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.reads".to_string(),
+                    CtlValue::U64(12),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.nwritten".to_string(),
+                    CtlValue::U64(13),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.writes".to_string(),
+                    CtlValue::U64(14),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x58d.dataset_name"
+                        .to_string(),
+                    CtlValue::String("tank/bar".to_string()),
+                ),
+            ]
+            .into_iter()
             .map(Ok);
             let mut iter = SnapshotIter::with_inner(kv);
             let ss = iter.next().unwrap().unwrap();
