@@ -11,10 +11,10 @@ build: &BUILD
     folder: $HOME/.cargo/registry
     fingerprint_script: cat Cargo.lock || echo ""
   build_script:
-    - . $HOME/.cargo/env
+    - . $HOME/.cargo/env || true
     - cargo build --all
   test_script:
-    - . $HOME/.cargo/env
+    - . $HOME/.cargo/env || true
     - cargo test --all
 
 task:
