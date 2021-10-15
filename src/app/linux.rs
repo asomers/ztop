@@ -1,5 +1,6 @@
 // vim: tw=80
 use std::error::Error;
+
 use super::Snapshot;
 
 pub(super) struct SnapshotIter {}
@@ -11,7 +12,7 @@ impl SnapshotIter {
 }
 
 impl Iterator for SnapshotIter {
-    type Item=Result<Snapshot, Box<dyn Error>>;
+    type Item = Result<Snapshot, Box<dyn Error>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unimplemented!()
