@@ -114,7 +114,7 @@ impl SnapshotIter {
 }
 
 impl Iterator for SnapshotIter {
-    type Item=Result<Snapshot, Box<SysctlError>>;
+    type Item=Result<Snapshot, Box<dyn Error>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // We need to read several values from the internal iterator to assemble

@@ -18,6 +18,11 @@ cfg_if! {
     if #[cfg(target_os = "freebsd")] {
         mod freebsd;
         use freebsd::{SnapshotIter};
+        const CLOCK_UPTIME: ClockId = ClockId::CLOCK_UPTIME;
+    } else if #[cfg(target_os = "linux")] {
+        mod linux;
+        use linux::SnapshotIter;
+        const CLOCK_UPTIME: ClockId = ClockId::CLOCK_BOOTTIME;
     }
 }
 
@@ -108,7 +113,7 @@ impl DataSource {
             let delta = *self.cur_ts.as_ref().unwrap() - *prev_ts;
             delta.tv_sec() as f64 + delta.tv_nsec() as f64 * 1e-9
         } else {
-            let boottime = clock_gettime(ClockId::CLOCK_UPTIME).unwrap();
+            let boottime = clock_gettime(CLOCK_UPTIME).unwrap();
             boottime.tv_sec() as f64 + boottime.tv_nsec() as f64 * 1e-9
         };
         DataSourceIter {

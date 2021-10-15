@@ -1,10 +1,12 @@
-common: &COMMON
+setup: &SETUP
   env:
     HOME: /tmp # cargo needs it
     RUST_BACKTRACE: full  # Better info for debugging test failures.
   setup_script:
     - fetch https://sh.rustup.rs -o rustup.sh
     - sh rustup.sh -y --profile=minimal --default-toolchain ${VERSION}-x86_64-unknown-freebsd
+
+build: &BUILD
   cargo_cache:
     folder: $HOME/.cargo/registry
     fingerprint_script: cat Cargo.lock || echo ""
@@ -18,11 +20,11 @@ common: &COMMON
 task:
   env:
     VERSION: 1.53.0
-  matrix:
-    - name: FreeBSD 12.2 MSRV
-      freebsd_instance:
-        image: freebsd-12-2-release-amd64
-  << : *COMMON
+  name: FreeBSD 12.2 MSRV
+  freebsd_instance:
+    image: freebsd-12-2-release-amd64
+  << : *SETUP
+  << : *BUILD
   before_cache_script: rm -rf $HOME/.cargo/registry/index
 
 task:
@@ -31,7 +33,8 @@ task:
     VERSION: nightly
   freebsd_instance:
     image: freebsd-13-0-release-amd64
-  << : *COMMON
+  << : *SETUP
+  << : *BUILD
   clippy_script:
     - . $HOME/.cargo/env
     - rustup component add clippy
@@ -41,4 +44,11 @@ task:
     - . $HOME/.cargo/env
     - cargo update -Zminimal-versions
     - cargo check --all-targets
+  before_cache_script: rm -rf $HOME/.cargo/registry/index
+
+task:
+  name: Linux MSRV
+  container:
+    image: rust:1.53.0
+  << : *BUILD
   before_cache_script: rm -rf $HOME/.cargo/registry/index
