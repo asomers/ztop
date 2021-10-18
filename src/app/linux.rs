@@ -19,12 +19,12 @@ pub(super) struct SnapshotIter {
 }
 
 /// This is the default filepath for zfs stats using ZoL.
-const DEFAULT_ZFS_STATS_PATH: &'static str = "/proc/spl/kstat/zfs";
+const DEFAULT_ZFS_STATS_PATH: &str = "/proc/spl/kstat/zfs";
 
 impl SnapshotIter {
     /// Simply use the default path to the stats files in procfs.  A value of `None`
     /// for `pool` will get statistics for all pools.
-    pub(crate) fn new<'a>(pool: Option<&str>) -> Result<Self, Box<dyn Error>> {
+    pub(crate) fn new(pool: Option<&str>) -> Result<Self, Box<dyn Error>> {
         Self::new_from_basepath(DEFAULT_ZFS_STATS_PATH, pool)
     }
 
@@ -55,7 +55,7 @@ impl SnapshotIter {
             dir.filter_map(|e| {
                 e.map_or(None, |entry| {
                     if is_dataset(&entry) {
-                        Some(entry.path().to_path_buf())
+                        Some(entry.path())
                     } else {
                         None
                     }
@@ -71,7 +71,7 @@ impl SnapshotIter {
     ) -> Result<HashSet<PathBuf>, Box<dyn Error>> {
         let zfs_stats_path = PathBuf::from(basepath);
         let mut pools = SnapshotIter::get_pools(zfs_stats_path.as_path())
-            .map_or_else(|err| Err(Box::new(err)), |x| Ok(x))?;
+            .map_or_else(|err| Err(Box::new(err)), Ok)?;
         if let Some(pool) = pool {
             let pool = PathBuf::from(pool);
             pools.retain(|p| p == &pool);
@@ -95,7 +95,7 @@ impl SnapshotIter {
                 if let Ok(entry) = entry {
                     let path = entry.path();
                     if path.is_dir() {
-                        Some(path.to_path_buf())
+                        Some(path)
                     } else {
                         None
                     }
@@ -184,7 +184,7 @@ enum SnapshotParseData<'a> {
 fn parse_snapshot(s: &str) -> Result<Snapshot, ZTopError> {
     use SnapshotParseData::{Name, Number};
     let mut stats = HashMap::new();
-    for row in s.split("\n") {
+    for row in s.split('\n') {
         let fields: Vec<_> = row.split_whitespace().collect();
         match fields[..] {
             [name, _, data] if name != "name" => {
@@ -229,7 +229,7 @@ mod t {
         #[test]
         fn full_objset() {
             let objset =
-                OBJSET.iter().map(|&x| x).collect::<Vec<&str>>().join("\n");
+                OBJSET.iter().copied().collect::<Vec<&str>>().join("\n");
             let expected: Result<Snapshot, ZTopError> = Ok(Snapshot {
                 name:      "tank".to_owned(),
                 nunlinked: 4,
@@ -247,7 +247,7 @@ mod t {
         fn without_header() {
             let objset = &OBJSET[2..9]
                 .iter()
-                .map(|&x| x)
+                .copied()
                 .collect::<Vec<&str>>()
                 .join("\n");
             let expected: Result<Snapshot, ZTopError> = Ok(Snapshot {
@@ -265,7 +265,7 @@ mod t {
         /// The order of the file/data doesn't matter.
         #[test]
         fn out_of_order() {
-            let mut objset = OBJSET.iter().map(|&x| x).collect::<Vec<&str>>();
+            let mut objset = OBJSET.iter().copied().collect::<Vec<&str>>();
             objset.reverse();
             let objset = objset.join("\n");
             let expected: Result<Snapshot, ZTopError> = Ok(Snapshot {
@@ -288,14 +288,14 @@ mod t {
             // Leave off the end field.
             let objset = &OBJSET[2..8]
                 .iter()
-                .map(|&x| x)
+                .copied()
                 .collect::<Vec<&str>>()
                 .join("\n");
             assert!(parse_snapshot(objset).is_err());
             // Strip the dataset_name field.
             let objset = &OBJSET[3..9]
                 .iter()
-                .map(|&x| x)
+                .copied()
                 .collect::<Vec<&str>>()
                 .join("\n");
             assert!(parse_snapshot(objset).is_err());
