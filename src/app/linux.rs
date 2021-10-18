@@ -360,13 +360,64 @@ mod t {
             .collect::<HashSet<Snapshot>>()
         }
 
+        fn zroot_set() -> HashSet<Snapshot> {
+            [
+                Snapshot {
+                    name:      "zroot/home".to_string(),
+                    writes:    207535,
+                    nwritten:  2076078,
+                    reads:     1063298,
+                    nread:     728359,
+                    nunlinks:  1275119,
+                    nunlinked: 485012,
+                },
+                Snapshot {
+                    name:      "zroot".to_string(),
+                    writes:    3142616,
+                    nwritten:  3657306,
+                    reads:     3697562,
+                    nread:     257904,
+                    nunlinks:  3651099,
+                    nunlinked: 2582330,
+                },
+            ]
+            .iter()
+            .cloned()
+            .collect::<HashSet<Snapshot>>()
+        }
+
         /// Reading one pool returns its datasets
         #[test]
         fn read_one_pool() {
             let expected = tank_set();
             let snaps = SnapshotIter::new_from_basepath(MOCK_DIR, Some("tank"));
+            assert!(snaps.is_ok());
+            let actual = snaps
+                .unwrap()
+                .filter_map(|res| res.map_or(None, Some))
+                .collect::<HashSet<Snapshot>>();
+            assert_eq!(actual, expected);
+        }
 
-            println!("Current directory is {:?}", std::env::current_dir());
+        /// Reading one pool returns its datasets (again)
+        #[test]
+        fn read_another_pool() {
+            let expected = zroot_set();
+            let snaps =
+                SnapshotIter::new_from_basepath(MOCK_DIR, Some("zroot"));
+            assert!(snaps.is_ok());
+            let actual = snaps
+                .unwrap()
+                .filter_map(|res| res.map_or(None, Some))
+                .collect::<HashSet<Snapshot>>();
+            assert_eq!(actual, expected);
+        }
+
+        /// No pool given means return datasets for all pools
+        #[test]
+        fn read_all_pools() {
+            let expected = zroot_set().union(&tank_set()).cloned().collect();
+            let snaps = SnapshotIter::new_from_basepath(MOCK_DIR, None);
             assert!(snaps.is_ok());
             let actual = snaps
                 .unwrap()
@@ -378,9 +429,8 @@ mod t {
         /// Don't crash when there are no datasets in a pool
         #[test]
         fn empty_pool() {
-            let snaps = SnapshotIter::new_from_basepath(MOCK_DIR, Some("empty"));
-
-            println!("Current directory is {:?}", std::env::current_dir());
+            let snaps =
+                SnapshotIter::new_from_basepath(MOCK_DIR, Some("empty"));
             assert!(snaps.is_ok());
             let actual = snaps
                 .unwrap()
@@ -392,7 +442,8 @@ mod t {
         /// Do crash on missing pool
         #[test]
         fn missing_pool() {
-            assert!(SnapshotIter::new_from_basepath(MOCK_DIR, Some("missing")).is_err());
+            assert!(SnapshotIter::new_from_basepath(MOCK_DIR, Some("missing"))
+                .is_err());
         }
     }
 }
