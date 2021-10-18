@@ -1,0 +1,9 @@
+27 1 0x01 7 2160 17749623426 24946310495932
+name                            type data
+dataset_name                    7    tank/backups
+writes                          4    57307
+nwritten                        4    3688922381
+reads                           4   3910907
+nread                           4   2953618
+nunlinks                        4    11364
+nunlinked                       4    11364

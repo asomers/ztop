@@ -204,7 +204,7 @@ fn parse_snapshot(s: &str) -> Result<Snapshot, ZTopError> {
 
 #[cfg(test)]
 mod t {
-    mod snapshot_parsing {
+    mod parsing {
         use super::super::*;
 
         const OBJSET: [&str; 9] = [
