@@ -1,0 +1,9 @@
+26 1 0x01 7 2160 17746445681 24946313033089
+name                            type data
+dataset_name                    7    zroot
+writes                          4    3142616
+nwritten                        4    3657306
+reads                           4    3697562
+nread                           4    257904
+nunlinks                        4    3651099
+nunlinked                       4    2582330

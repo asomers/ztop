@@ -374,5 +374,25 @@ mod t {
                 .collect::<HashSet<Snapshot>>();
             assert_eq!(actual, expected);
         }
+
+        /// Don't crash when there are no datasets in a pool
+        #[test]
+        fn empty_pool() {
+            let snaps = SnapshotIter::new_from_basepath(MOCK_DIR, Some("empty"));
+
+            println!("Current directory is {:?}", std::env::current_dir());
+            assert!(snaps.is_ok());
+            let actual = snaps
+                .unwrap()
+                .filter_map(|res| res.map_or(None, Some))
+                .collect::<HashSet<Snapshot>>();
+            assert_eq!(actual, HashSet::new());
+        }
+
+        /// Do crash on missing pool
+        #[test]
+        fn missing_pool() {
+            assert!(SnapshotIter::new_from_basepath(MOCK_DIR, Some("missing")).is_err());
+        }
     }
 }
