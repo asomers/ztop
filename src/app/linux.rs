@@ -41,31 +41,43 @@ impl SnapshotIter {
         Ok(SnapshotIter { idx: 0, objsets })
     }
 
-    // Get all objset paths for a given pool.
-    // At this point all the paths should exist, because they have been
-    // checked by `required_pools_from_basepath`.  Should this somehow be
-    // expressed as an invariant?
-    fn enumerate_pool(pool: PathBuf) -> Result<Vec<PathBuf>, Box<dyn Error>> {
-        let is_dataset = |entry: &fs::DirEntry| {
-            let path = entry.path();
-            let name = entry.file_name();
-            let name = name.to_str().unwrap_or("");
-            path.is_file() && name.starts_with("objset")
-        };
-        fs::read_dir(pool)
-            .map(|dir| {
-                dir.filter_map(|e| {
-                    e.map_or(None, |entry| {
-                        if is_dataset(&entry) {
-                            Some(entry.path())
-                        } else {
-                            None
+    fn is_dataset(entry: &fs::DirEntry) -> bool {
+        let path = entry.path();
+        let name = entry.file_name();
+        let name = name.to_str().unwrap_or("");
+        path.is_file() && name.starts_with("objset")
+    }
+
+    fn enumerate_pool(pool: PathBuf) -> Result<Vec<PathBuf>, io::Error> {
+        let pool = fs::read_dir(pool).map_or_else(
+            |err| {
+                if let io::ErrorKind::NotFound = err.kind() {
+                    Ok(None)
+                } else {
+                    Err(err)
+                }
+            },
+            |pool| Ok(Some(pool)),
+        )?;
+
+        let mut objsets = Vec::new();
+        if let Some(pool) = pool {
+            for entry in pool {
+                match entry {
+                    Ok(entry) => {
+                        if Self::is_dataset(&entry) {
+                            objsets.push(entry.path());
                         }
-                    })
-                })
-                .collect()
-            })
-            .map_err(|err| Box::new(err) as Box<dyn Error>)
+                    }
+                    Err(err) => {
+                        if err.kind() != io::ErrorKind::NotFound {
+                            return Err(err);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(objsets)
     }
 
     fn required_pools_from_basepath(
