@@ -45,26 +45,27 @@ impl SnapshotIter {
     // At this point all the paths should exist, because they have been
     // checked by `required_pools_from_basepath`.  Should this somehow be
     // expressed as an invariant?
-    fn enumerate_pool(pool: PathBuf) -> Result<Vec<PathBuf>, Box::<dyn Error>> {
+    fn enumerate_pool(pool: PathBuf) -> Result<Vec<PathBuf>, Box<dyn Error>> {
         let is_dataset = |entry: &fs::DirEntry| {
             let path = entry.path();
             let name = entry.file_name();
             let name = name.to_str().unwrap_or("");
             path.is_file() && name.starts_with("objset")
         };
-        fs::read_dir(pool).map(|dir| {
-            dir.filter_map(|e| {
-                e.map_or(None, |entry| {
-                    if is_dataset(&entry) {
-                        Some(entry.path())
-                    } else {
-                        None
-                    }
+        fs::read_dir(pool)
+            .map(|dir| {
+                dir.filter_map(|e| {
+                    e.map_or(None, |entry| {
+                        if is_dataset(&entry) {
+                            Some(entry.path())
+                        } else {
+                            None
+                        }
+                    })
                 })
+                .collect()
             })
-            .collect()
-        })
-        .map_err(|err| Box::new(err) as Box<dyn Error>)
+            .map_err(|err| Box::new(err) as Box<dyn Error>)
     }
 
     fn required_pools_from_basepath(
@@ -128,18 +129,10 @@ impl Iterator for SnapshotIter {
 }
 
 fn snapshot_from_hash_map<'a>(
-    stats: &'a HashMap<&str, SnapshotParseData>,
+    stats: &'a HashMap<&'a str, &'a str>,
 ) -> Option<Snapshot> {
-    use SnapshotParseData::{Name, Number};
-    let get_name = |data: &'a SnapshotParseData| match data {
-        Name(name) => Some(name),
-        _ => None,
-    };
-    let get_number = |data: &'a SnapshotParseData| match data {
-        Number(n) => Some(*n),
-        _ => None,
-    };
-    let name = stats.get("dataset_name").and_then(get_name)?.to_string();
+    let get_number = |data: &&'a str| data.parse::<u64>().ok();
+    let name = stats.get("dataset_name")?.to_string();
     let nunlinked = stats.get("nunlinked").and_then(get_number)?;
     let nunlinks = stats.get("nunlinks").and_then(get_number)?;
     let nread = stats.get("nread").and_then(get_number)?;
@@ -178,24 +171,12 @@ impl fmt::Display for ZTopError {
     }
 }
 
-#[derive(Debug)]
-enum SnapshotParseData<'a> {
-    Name(&'a str),
-    Number(u64),
-}
-
 fn parse_snapshot(s: &str) -> Result<Snapshot, ZTopError> {
-    use SnapshotParseData::{Name, Number};
     let mut stats = HashMap::new();
     for row in s.split('\n') {
         let fields: Vec<_> = row.split_whitespace().collect();
-        match fields[..] {
-            [name, _, data] if name != "name" => {
-                let data =
-                    data.parse::<u64>().map_or_else(|_| Name(data), Number);
-                stats.insert(name, data);
-            }
-            _ => {}
+        if let [name, _, data] = fields[..] {
+            stats.insert(name, data);
         }
     }
     if let Some(snap) = snapshot_from_hash_map(&stats) {
