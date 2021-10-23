@@ -71,7 +71,7 @@ impl SnapshotIter {
     ) -> Result<HashSet<PathBuf>, Box<dyn Error>> {
         let zfs_stats_path = PathBuf::from(basepath);
         let mut pools = SnapshotIter::get_pools(zfs_stats_path.as_path())
-            .map_or_else(|err| Err(Box::new(err)), Ok)?;
+            .map_err(Box::new)?;
         if let Some(pool) = pool {
             let pool: PathBuf =
                 [zfs_stats_path, PathBuf::from(pool)].iter().collect();
@@ -118,7 +118,7 @@ impl Iterator for SnapshotIter {
             fs::read_to_string(objset)
                 .map_err(|err| Box::new(err) as Box<dyn Error>)
                 .and_then(|data| {
-                    parse_snapshot(data.as_ref())
+                    parse_snapshot(&data)
                         .map_err(|err| Box::new(err) as Box<dyn Error>)
                 })
         })
