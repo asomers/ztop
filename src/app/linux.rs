@@ -33,10 +33,11 @@ impl SnapshotIter {
         basepath: &str,
         pool: Option<&str>,
     ) -> Result<SnapshotIter, Box<dyn Error>> {
-        let objsets = Self::required_pools_from_basepath(basepath, pool)?
-            .into_iter()
-            .flat_map(Self::enumerate_pool)
-            .collect::<Vec<PathBuf>>();
+        let mut objsets = Vec::new();
+        for pool in Self::required_pools_from_basepath(basepath, pool)? {
+            let mut objset_files = Self::enumerate_pool(pool)?;
+            objsets.append(&mut objset_files);
+        }
         Ok(SnapshotIter { idx: 0, objsets })
     }
 
@@ -44,14 +45,14 @@ impl SnapshotIter {
     // At this point all the paths should exist, because they have been
     // checked by `required_pools_from_basepath`.  Should this somehow be
     // expressed as an invariant?
-    fn enumerate_pool(pool: PathBuf) -> Vec<PathBuf> {
+    fn enumerate_pool(pool: PathBuf) -> Result<Vec<PathBuf>, Box::<dyn Error>> {
         let is_dataset = |entry: &fs::DirEntry| {
             let path = entry.path();
             let name = entry.file_name();
             let name = name.to_str().unwrap_or("");
             path.is_file() && name.starts_with("objset")
         };
-        fs::read_dir(pool).map_or(vec![], |dir| {
+        fs::read_dir(pool).map(|dir| {
             dir.filter_map(|e| {
                 e.map_or(None, |entry| {
                     if is_dataset(&entry) {
@@ -63,6 +64,7 @@ impl SnapshotIter {
             })
             .collect()
         })
+        .map_err(|err| Box::new(err) as Box<dyn Error>)
     }
 
     fn required_pools_from_basepath(
