@@ -75,10 +75,10 @@ impl Builder {
 }
 
 pub(super) struct SnapshotIter {
-    inner: Box<dyn Iterator<Item = Result<(String, CtlValue), SysctlError>>>,
-    objset_name: Option<String>,
-    finished:    bool,
-    builder:     Builder,
+    inner:    Box<dyn Iterator<Item = Result<(String, CtlValue), SysctlError>>>,
+    finished: bool,
+    builder:  Builder,
+    last:     Option<(String, String)>,
 }
 
 impl SnapshotIter {
@@ -91,10 +91,10 @@ impl SnapshotIter {
         T: Iterator<Item = Result<(String, CtlValue), SysctlError>> + 'static,
     {
         SnapshotIter {
-            inner:       Box::new(inner),
-            objset_name: None,
-            finished:    false,
-            builder:     Builder::default(),
+            inner:    Box::new(inner),
+            finished: false,
+            builder:  Builder::default(),
+            last:     None,
         }
     }
 
@@ -106,19 +106,20 @@ impl SnapshotIter {
     /// returns `Some(snapshot)` and prepares `self` to build the next Snapshot.
     fn build(&mut self, name: String, value: CtlValue) -> Option<Snapshot> {
         let mut fields = name.split('.');
-        let on = fields.nth(4).unwrap();
-        match &self.objset_name {
+        let pool = fields.nth(2).unwrap();
+        let on = fields.nth(1).unwrap();
+        match &self.last {
             None => {
                 self.builder.build(&name, value);
-                self.objset_name = Some(on.to_owned());
+                self.last = Some((on.to_owned(), pool.to_owned()));
                 None
             }
-            Some(son) if son == on => {
+            Some((son, spool)) if son == on && pool == spool => {
                 self.builder.build(&name, value);
                 None
             }
             _ => {
-                self.objset_name = Some(on.to_owned());
+                self.last = Some((on.to_owned(), pool.to_owned()));
                 let new = Builder::default();
                 let old = mem::replace(&mut self.builder, new);
                 self.builder.build(&name, value);
@@ -449,6 +450,63 @@ mod t {
             assert_eq!(ss.nwritten, 13);
             assert_eq!(ss.writes, 14);
             assert!(iter.next().is_none());
+        }
+
+        /// If the sysctls progress from one pool to another but the objset
+        /// number doesn't change, we must still finish the Builder
+        #[test]
+        fn same_objset_two_pools() {
+            let kv = vec![
+                (
+                    "kstat.zfs.tank.dataset.objset-0x36.nunlinked".to_string(),
+                    CtlValue::U64(1),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x36.nunlinks".to_string(),
+                    CtlValue::U64(2),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x36.nread".to_string(),
+                    CtlValue::U64(3),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x36.reads".to_string(),
+                    CtlValue::U64(4),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x36.nwritten".to_string(),
+                    CtlValue::U64(5),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x36.writes".to_string(),
+                    CtlValue::U64(6),
+                ),
+                (
+                    "kstat.zfs.tank.dataset.objset-0x36.dataset_name"
+                        .to_string(),
+                    CtlValue::String("tank/foo".to_string()),
+                ),
+                (
+                    "kstat.zfs.zroot.dataset.objset-0x36.nunlinked".to_string(),
+                    CtlValue::U64(1),
+                ),
+                (
+                    "kstat.zfs.zroot.dataset.objset-0x36.dataset_name"
+                        .to_string(),
+                    CtlValue::String("zroot/bar".to_string()),
+                ),
+            ]
+            .into_iter()
+            .map(Ok);
+            let mut iter = SnapshotIter::with_inner(kv);
+            let ss = iter.next().unwrap().unwrap();
+            assert_eq!(ss.name, "tank/foo");
+            assert_eq!(ss.nunlinked, 1);
+            assert_eq!(ss.nunlinks, 2);
+            assert_eq!(ss.nread, 3);
+            assert_eq!(ss.reads, 4);
+            assert_eq!(ss.nwritten, 5);
+            assert_eq!(ss.writes, 6);
         }
     }
 }
