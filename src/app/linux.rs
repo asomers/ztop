@@ -14,8 +14,7 @@ use super::Snapshot;
 /// under the desired pools on initialization.  Reading the
 /// objsets into Snapshots is lazy.
 pub(super) struct SnapshotIter {
-    idx:     usize,
-    objsets: Vec<PathBuf>,
+    objsets: Box<dyn Iterator<Item=PathBuf>>,
 }
 
 /// This is the default filepath for zfs stats using ZoL.
@@ -38,7 +37,7 @@ impl SnapshotIter {
             let mut objset_files = Self::enumerate_pool(pool)?;
             objsets.append(&mut objset_files);
         }
-        Ok(SnapshotIter { idx: 0, objsets })
+        Ok(SnapshotIter { objsets: Box::new(objsets.into_iter()) })
     }
 
     fn is_dataset(entry: &fs::DirEntry) -> bool {
@@ -128,8 +127,7 @@ impl Iterator for SnapshotIter {
     type Item = Result<Snapshot, Box<dyn Error>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.idx += 1;
-        self.objsets.get(self.idx - 1).map(|objset| {
+        self.objsets.next().map(|objset| {
             fs::read_to_string(objset)
                 .map_err(|err| Box::new(err) as Box<dyn Error>)
                 .and_then(|data| {
