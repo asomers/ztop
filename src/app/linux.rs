@@ -14,7 +14,7 @@ use super::Snapshot;
 /// under the desired pools on initialization.  Reading the
 /// objsets into Snapshots is lazy.
 pub(super) struct SnapshotIter {
-    objsets: Box<dyn Iterator<Item=PathBuf>>,
+    objsets: Box<dyn Iterator<Item = PathBuf>>,
 }
 
 /// This is the default filepath for zfs stats using ZoL.
@@ -37,7 +37,9 @@ impl SnapshotIter {
             let mut objset_files = Self::enumerate_pool(pool)?;
             objsets.append(&mut objset_files);
         }
-        Ok(SnapshotIter { objsets: Box::new(objsets.into_iter()) })
+        Ok(SnapshotIter {
+            objsets: Box::new(objsets.into_iter()),
+        })
     }
 
     fn is_dataset(entry: &fs::DirEntry) -> bool {
@@ -87,15 +89,10 @@ impl SnapshotIter {
         let mut pools = SnapshotIter::get_pools(zfs_stats_path.as_path())
             .map_err(Box::new)?;
         if let Some(pool) = pool {
-            let pool: PathBuf =
-                [zfs_stats_path, PathBuf::from(pool)].iter().collect();
-            pools.retain(|p| p == &pool);
+            let pool_path = Path::new(&zfs_stats_path).join(Path::new(pool));
+            pools.retain(|p| p == &pool_path);
             if pools.is_empty() {
-                let name = pool
-                    .file_name()
-                    .map(|ostr| ostr.to_str().unwrap_or(""))
-                    .unwrap_or("")
-                    .to_string();
+                let name = pool.to_owned();
                 return Err(Box::new(ZTopError::PoolDoesNotExist {
                     pool: name,
                 }));
