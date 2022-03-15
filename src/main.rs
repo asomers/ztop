@@ -184,9 +184,9 @@ mod ui {
     pub fn col_idx(col_name: &String) -> Option<usize> {
         match col_name.trim() {
             "r/s" => Some(0),
-            " kB/s r" => Some(1),
+            "kB/s r" => Some(1),
             "w/s" => Some(2),
-            " kB/s w" => Some(3),
+            "kB/s w" => Some(3),
             "d/s" => Some(4),
             "kB/s d" => Some(5),
             "Dataset" => Some(6),
