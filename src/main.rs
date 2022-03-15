@@ -1,5 +1,5 @@
 // vim: tw=80
-use std::{array, error::Error, io, num::NonZeroUsize, time::Duration};
+use std::{error::Error, io, num::NonZeroUsize, time::Duration};
 
 use regex::Regex;
 use structopt::StructOpt;
@@ -116,7 +116,7 @@ mod ui {
     pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         let hstyle = Style::default().fg(Color::Red);
         let sstyle = hstyle.add_modifier(Modifier::REVERSED);
-        let hcells = array::IntoIter::new([
+        let hcells = [
             Cell::from("   r/s"),
             Cell::from(" kB/s r"),
             Cell::from("   w/s"),
@@ -124,7 +124,8 @@ mod ui {
             Cell::from("   d/s"),
             Cell::from("kB/s d"),
             Cell::from("Dataset"),
-        ])
+        ]
+        .into_iter()
         .enumerate()
         .map(|(i, cell)| {
             if Some(i) == app.sort_idx() {
