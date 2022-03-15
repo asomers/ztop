@@ -22,8 +22,11 @@ minor modifications.  Patches welcome.
 
 # Minimum Supported Rust Version (MSRV)
 
-ztop is supported on Rust 1.53.0 and higher.  It's MSRV will not be
-changed in the future without bumping the major or minor version.
+ztop does not guarantee any specific MSRV.  Rather, it guarantees compatibility
+with the oldest rustc shipped in the package collection of each supported
+operating system.
+
+* https://www.freshports.org/lang/rust/
 
 # License
 
