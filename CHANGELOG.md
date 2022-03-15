@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix sorting on the "kB/s r" and "kB/s w" columns with the -s option
+  (#[18](https://github.com/asomers/ztop/pull/18))
+
 - Don't crash if two different pools have objsets of the same ID that list
   adjacently in the sysctl tree.
   (#[15](https://github.com/asomers/ztop/pull/15))
