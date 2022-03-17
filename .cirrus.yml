@@ -39,15 +39,19 @@ task:
     - . $HOME/.cargo/env
     - rustup component add clippy
     - cargo clippy --all-features --all-targets -- -D warnings
+  fmt_script:
+    - . $HOME/.cargo/env
+    - rustup component add rustfmt
+    - cargo fmt --all -- --check --color=never
+  audit_script:
+    - . $HOME/.cargo/env
+    - cargo install cargo-audit
+    - cargo audit
   # Test our minimal version spec
   minver_test_script:
     - . $HOME/.cargo/env
     - cargo update -Zminimal-versions
     - cargo check --all-targets
-  fmt_script:
-    - . $HOME/.cargo/env
-    - rustup component add rustfmt
-    - cargo fmt --all -- --check --color=never
   before_cache_script: rm -rf $HOME/.cargo/registry/index
 
 task:
