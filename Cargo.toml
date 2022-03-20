@@ -14,7 +14,8 @@ include = ["src/**/*", "LICENSE", "README.md", "CHANGELOG.md"]
 cfg-if = "1.0"
 humanize-rs = "0.1.5"
 ieee754 = "0.2.5"
-nix = "0.23.0"
+nix = { version = "0.24.0", default-features = false, features = ["poll", "time"] }
+
 structopt = "0.3.22"
 sysctl = "0.4.2"
 termion = "1.5"
