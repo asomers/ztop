@@ -8,7 +8,6 @@ use std::{
 };
 
 use cfg_if::cfg_if;
-use ieee754::Ieee754;
 use nix::{
     sys::time::TimeSpec,
     time::{clock_gettime, ClockId},
@@ -298,21 +297,18 @@ impl App {
             ).filter(|elem| !auto || (elem.r_s + elem.w_s + elem.d_s > 1.0))
             .collect::<Vec<_>>();
         match (self.reverse, self.sort_idx) {
-            // TODO: when the total_cmp feature stabilities, use f64::total_cmp
-            // instead.
-            // https://github.com/rust-lang/rust/issues/72599
-            (false, Some(0)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.ops_r, &y.ops_r)),
-            (true,  Some(0)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.ops_r, &x.ops_r)),
-            (false, Some(1)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.r_s, &y.r_s)),
-            (true,  Some(1)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.r_s, &x.r_s)),
-            (false, Some(2)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.ops_w, &y.ops_w)),
-            (true,  Some(2)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.ops_w, &x.ops_w)),
-            (false, Some(3)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.w_s, &y.w_s)),
-            (true,  Some(3)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.w_s, &x.w_s)),
-            (false, Some(4)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.ops_d, &y.ops_d)),
-            (true,  Some(4)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.ops_d, &x.ops_d)),
-            (false, Some(5)) => v.sort_by(|x, y| Ieee754::total_cmp(&x.d_s, &y.d_s)),
-            (true,  Some(5)) => v.sort_by(|x, y| Ieee754::total_cmp(&y.d_s, &x.d_s)),
+            (false, Some(0)) => v.sort_by(|x, y| x.ops_r.total_cmp(&y.ops_r)),
+            (true,  Some(0)) => v.sort_by(|x, y| y.ops_r.total_cmp(&x.ops_r)),
+            (false, Some(1)) => v.sort_by(|x, y| x.r_s.total_cmp(&y.r_s)),
+            (true,  Some(1)) => v.sort_by(|x, y| y.r_s.total_cmp(&x.r_s)),
+            (false, Some(2)) => v.sort_by(|x, y| x.ops_w.total_cmp(&y.ops_w)),
+            (true,  Some(2)) => v.sort_by(|x, y| y.ops_w.total_cmp(&x.ops_w)),
+            (false, Some(3)) => v.sort_by(|x, y| x.w_s.total_cmp(&y.w_s)),
+            (true,  Some(3)) => v.sort_by(|x, y| y.w_s.total_cmp(&x.w_s)),
+            (false, Some(4)) => v.sort_by(|x, y| x.ops_d.total_cmp(&y.ops_d)),
+            (true,  Some(4)) => v.sort_by(|x, y| y.ops_d.total_cmp(&x.ops_d)),
+            (false, Some(5)) => v.sort_by(|x, y| x.d_s.total_cmp(&y.d_s)),
+            (true,  Some(5)) => v.sort_by(|x, y| y.d_s.total_cmp(&x.d_s)),
             (false, Some(6)) => v.sort_by(|x, y| x.name.cmp(&y.name)),
             (true,  Some(6)) => v.sort_by(|x, y| y.name.cmp(&x.name)),
             _ => ()
