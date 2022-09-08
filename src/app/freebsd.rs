@@ -1,9 +1,24 @@
 // vim: tw=80
 use std::{error::Error, mem};
 
+use cfg_if::cfg_if;
 use sysctl::{Ctl, CtlIter, CtlValue, Sysctl, SysctlError};
 
 use super::Snapshot;
+
+cfg_if! {
+    if #[cfg(debug_assertions)] {
+        macro_rules! debug_println {
+            ($($tokens:tt),*) => {
+                eprintln!($($tokens),*)
+            }
+        }
+    } else {
+        macro_rules! debug_println {
+            ($($tokens:tt),*) => {()}
+        }
+    }
+}
 
 #[derive(Default)]
 struct Builder {
@@ -23,7 +38,7 @@ impl Builder {
         match value {
             CtlValue::String(s) => {
                 if field != "dataset_name" {
-                    eprintln!("Unknown sysctl {:?}", name);
+                    debug_println!("Unknown sysctl {:?}", name);
                 }
                 assert_eq!(self.dataset_name.replace(s), None);
             }
@@ -46,9 +61,14 @@ impl Builder {
                 "writes" => {
                     self.writes = Some(x);
                 }
-                _ => eprintln!("Unknown sysctl {:?}", name),
+                _ => {
+                    /* The zil_ stats aren't interesting to ztop */
+                    if !name.contains(".zil_") {
+                        debug_println!("Unknown sysctl {:?}", name);
+                    }
+                }
             },
-            _ => eprintln!("Unknown sysctl {:?}", name),
+            _ => debug_println!("Unknown sysctl {:?}", name),
         };
     }
 
