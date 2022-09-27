@@ -1,8 +1,8 @@
 // vim: tw=80
 use std::{error::Error, io, num::NonZeroUsize, time::Duration};
 
+use clap::Parser;
 use regex::Regex;
-use structopt::StructOpt;
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode};
 use tui::{
     backend::TermionBackend,
@@ -19,29 +19,29 @@ use self::event::{Event, Events};
 
 /// Display ZFS datasets' I/O in real time
 // TODO: shorten the help options so they fit on 80 columns.
-#[derive(Debug, Default, StructOpt)]
+#[derive(Debug, Default, clap::StructOpt)]
 struct Cli {
     /// only display datasets that have some activity.
-    #[structopt(short = "a", long = "auto", verbatim_doc_comment)]
+    #[clap(short = 'a', long = "auto", verbatim_doc_comment)]
     auto:     bool,
     /// Include child datasets' stats with their parents'.
-    #[structopt(short = "c", long = "children")]
+    #[clap(short = 'c', long = "children")]
     children: bool,
     /// display datasets no more than this many levels deep.
-    #[structopt(short = "d", long = "depth")]
+    #[clap(short = 'd', long = "depth")]
     depth:    Option<NonZeroUsize>,
     /// only display datasets with names matching filter, as a regex.
-    #[structopt(short = "f", parse(try_from_str = Regex::new), long = "filter")]
+    #[clap(short = 'f', parse(try_from_str = Regex::new), long = "filter")]
     filter:   Option<Regex>,
     /// display update interval, in seconds or with the specified unit
-    #[structopt(short = "t", parse(try_from_str = Cli::duration_from_str),
+    #[clap(short = 't', parse(try_from_str = Cli::duration_from_str),
         long = "time")]
     time:     Option<Duration>,
     /// Reverse the sort
-    #[structopt(short = "r", long = "reverse")]
+    #[clap(short = 'r', long = "reverse")]
     reverse:  bool,
     /// Sort by the named column.  The name should match the column header.
-    #[structopt(short = "s", long = "sort")]
+    #[clap(short = 's', long = "sort")]
     sort:     Option<String>,
     /// Display these pools and their children
     pools:    Vec<String>,

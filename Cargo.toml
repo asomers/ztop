@@ -12,10 +12,9 @@ include = ["src/**/*", "LICENSE", "README.md", "CHANGELOG.md"]
 
 [dependencies]
 cfg-if = "1.0"
+clap = { version = "3.0", features = ["derive"] }
 humanize-rs = "0.1.5"
 nix = { version = "0.24.0", default-features = false, features = ["poll", "time"] }
-
-structopt = "0.3.22"
 sysctl = "0.4.2"
 termion = "1.5"
 tui = { version = "0.15.0", features = ["termion"] }
