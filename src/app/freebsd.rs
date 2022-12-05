@@ -187,7 +187,7 @@ impl SysctlIter {
         let root = if let Some(s) = pool {
             Ctl::new(&format!("kstat.zfs.{}.dataset", s.replace('.', "%25")))
                 .unwrap_or_else(|_e| {
-                    eprintln!("Statistics not found for pool {}", s);
+                    eprintln!("Statistics not found for pool {s}");
                     std::process::exit(1);
                 })
         } else {
