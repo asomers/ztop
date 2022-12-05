@@ -45,7 +45,7 @@ impl<T: TermRead> Events<T> {
                 Some(Ok(event::Event::Key(key))) => Some(Event::Key(key)),
                 Some(Ok(event::Event::Mouse(mev))) => Some(Event::Mouse(mev)),
                 None => None,
-                e => panic!("Unhandled input {:?}", e),
+                e => panic!("Unhandled input {e:?}"),
             }
         }
     }
