@@ -17,7 +17,7 @@ use regex::Regex;
 cfg_if! {
     if #[cfg(target_os = "freebsd")] {
         mod freebsd;
-        use freebsd::{SnapshotIter};
+        use freebsd::SnapshotIter;
         const CLOCK_UPTIME: ClockId = ClockId::CLOCK_UPTIME;
     } else if #[cfg(target_os = "linux")] {
         mod linux;
