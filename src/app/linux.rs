@@ -16,10 +16,10 @@ enum ObjsetValue {
 }
 
 fn parse_objset_row(row: &str) -> Option<(String, ObjsetValue)> {
-    let fields = row.split_ascii_whitespace().collect::<Vec<_>>();
+    let mut fields = row.split_ascii_whitespace();
 
-    match &fields[..] {
-        [name, _, value] => {
+    match (fields.next(), fields.next(), fields.next()) {
+        (Some(name), Some(_), Some(value)) => {
             let field_name = (*name).to_string();
             if field_name == "dataset_name" {
                 Some((field_name, ObjsetValue::String((*value).to_string())))
