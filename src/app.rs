@@ -29,7 +29,7 @@ cfg_if! {
 /// A snapshot in time of a dataset's statistics.
 ///
 /// The various fields are not saved atomically, but ought to be close.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 struct Snapshot {
     name:      String,
     nunlinked: u64,

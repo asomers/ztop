@@ -42,15 +42,7 @@ fn parse_objset<R: BufRead>(reader: R) -> io::Result<Snapshot> {
     // The second line contains column headers. Both these lines are skipped.
     let lines = reader.lines().skip(2);
 
-    let mut snap = Snapshot {
-        name:      String::new(), // temporary value will be overwritten
-        nread:     0,
-        nwritten:  0,
-        nunlinks:  0,
-        nunlinked: 0,
-        reads:     0,
-        writes:    0,
-    };
+    let mut snap = Snapshot::default();
 
     for line in lines {
         let fields = parse_objset_row(&line?).expect("malformed objset row");
