@@ -2,9 +2,9 @@
 
 #![warn(clippy::all, clippy::pedantic)]
 
-use std::{error::Error, fs::File, io, io::BufRead, path::PathBuf};
+use std::{error::Error, fs::File, io, io::BufRead, iter::{Peekable, Flatten}};
 
-use glob::glob;
+use glob::{Paths, Pattern, glob};
 
 use super::Snapshot;
 
@@ -72,6 +72,7 @@ impl TryFrom<File> for Snapshot {
 }
 
 /// Convenience implementation for simpler testing
+#[cfg(test)]
 impl TryFrom<&str> for Snapshot {
     type Error = io::Error;
 
@@ -81,7 +82,7 @@ impl TryFrom<&str> for Snapshot {
 }
 
 pub(super) struct SnapshotIter {
-    inner: Box<dyn Iterator<Item = PathBuf>>,
+    inner: Peekable<Flatten<Paths>>
 }
 
 impl SnapshotIter {
@@ -91,21 +92,22 @@ impl SnapshotIter {
     pub(crate) fn new(pool: Option<&str>) -> Result<Self, Box<dyn Error>> {
         let paths = match pool {
             Some(poolname) => {
-                let paths =
-                    glob(&format!("/proc/spl/kstat/zfs/{poolname}/objset-*"))?
+                let poolpat = Pattern::escape(poolname);
+                let mut paths =
+                    glob(&format!("/proc/spl/kstat/zfs/{poolpat}/objset-*"))?
                         .flatten()
-                        .collect::<Vec<_>>();
-                if paths.is_empty() {
+                        .peekable();
+                if paths.peek().is_none() {
                     eprintln!("Statistics not found for pool {poolname}");
                     std::process::exit(1);
                 }
                 paths
             }
             None => {
-                let paths = glob("/proc/spl/kstat/zfs/*/objset-*")?
+                let mut paths = glob("/proc/spl/kstat/zfs/*/objset-*")?
                     .flatten()
-                    .collect::<Vec<_>>();
-                if paths.is_empty() {
+                    .peekable();
+                if paths.peek().is_none() {
                     eprintln!("No pools found; ZFS module not loaded?");
                     std::process::exit(1);
                 }
@@ -114,7 +116,7 @@ impl SnapshotIter {
         };
 
         Ok(SnapshotIter {
-            inner: Box::new(paths.into_iter()),
+            inner: paths
         })
     }
 }
@@ -132,6 +134,9 @@ impl Iterator for SnapshotIter {
 
 #[cfg(test)]
 mod t {
+    // While I normally agree that wildcard imports are bad, "use super::*" is
+    // an exception.
+    #[allow(clippy::wildcard_imports)]
     use super::*;
 
     const SAMPLE_OBJSET: &str = "28 1 0x01 7 2160 5156962179 648086076730177

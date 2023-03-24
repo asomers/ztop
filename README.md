@@ -13,8 +13,7 @@ for pools, but until now there was no similar tool for datasets.
 
 # Platform support
 
-`ztop` works on FreeBSD 12 and later.  It would probably work on Linux with
-minor modifications.  Patches welcome.
+`ztop` works on FreeBSD 12 and later, and Linux.
 
 # Screenshot
 
