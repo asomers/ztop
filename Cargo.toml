@@ -19,6 +19,9 @@ sysctl = "0.4.2"
 termion = "1.5"
 tui = { version = "0.15.0", features = ["termion"] }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+glob = "0.3"
+
 [dependencies.regex]
 version = "1"
 # Disable the unicode feature, since dataset names are always ASCII

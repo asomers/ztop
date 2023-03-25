@@ -17,7 +17,7 @@ use regex::Regex;
 cfg_if! {
     if #[cfg(target_os = "freebsd")] {
         mod freebsd;
-        use freebsd::{SnapshotIter};
+        use freebsd::SnapshotIter;
         const CLOCK_UPTIME: ClockId = ClockId::CLOCK_UPTIME;
     } else if #[cfg(target_os = "linux")] {
         mod linux;
@@ -29,7 +29,7 @@ cfg_if! {
 /// A snapshot in time of a dataset's statistics.
 ///
 /// The various fields are not saved atomically, but ought to be close.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 struct Snapshot {
     name:      String,
     nunlinked: u64,
