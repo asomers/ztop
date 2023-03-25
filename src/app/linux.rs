@@ -2,9 +2,15 @@
 
 #![warn(clippy::all, clippy::pedantic)]
 
-use std::{error::Error, fs::File, io, io::BufRead, iter::{Peekable, Flatten}};
+use std::{
+    error::Error,
+    fs::File,
+    io,
+    io::BufRead,
+    iter::{Flatten, Peekable},
+};
 
-use glob::{Paths, Pattern, glob};
+use glob::{glob, Paths, Pattern};
 
 use super::Snapshot;
 
@@ -82,7 +88,7 @@ impl TryFrom<&str> for Snapshot {
 }
 
 pub(super) struct SnapshotIter {
-    inner: Peekable<Flatten<Paths>>
+    inner: Peekable<Flatten<Paths>>,
 }
 
 impl SnapshotIter {
@@ -115,9 +121,7 @@ impl SnapshotIter {
             }
         };
 
-        Ok(SnapshotIter {
-            inner: paths
-        })
+        Ok(SnapshotIter { inner: paths })
     }
 }
 
