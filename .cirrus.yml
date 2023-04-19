@@ -28,11 +28,11 @@ task:
   before_cache_script: rm -rf $HOME/.cargo/registry/index
 
 task:
-  name: FreeBSD 13.1 nightly
+  name: FreeBSD 13.2 nightly
   env:
     VERSION: nightly
   freebsd_instance:
-    image: freebsd-13-1-release-amd64
+    image: freebsd-13-2-release-amd64
   << : *SETUP
   << : *BUILD
   clippy_script:
