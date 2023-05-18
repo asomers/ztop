@@ -1,5 +1,5 @@
 brace_style = "SameLineWhere"
-edition = "2018"
+edition = "2021"
 format_strings = true
 group_imports = "StdExternalCrate"
 imports_granularity = "Crate"
