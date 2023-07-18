@@ -167,7 +167,7 @@ mod ui {
     }
 
     #[rustfmt::skip]
-    pub fn draw_filter<B: Backend>(f: &mut Frame<B>, app: &mut FilterPopup) {
+    pub fn draw_filter<B: Backend>(f: &mut Frame<B>, app: &FilterPopup) {
         let area = popup_layout(40, 3, f.size());
         let popup_box = Paragraph::new(app.new_regex.as_ref())
             .block(
@@ -226,7 +226,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         terminal.draw(|f| {
             ui::draw(f, &mut app);
             if editting_filter {
-                ui::draw_filter(f, &mut filter_popup)
+                ui::draw_filter(f, &filter_popup)
             }
         })?;
 
