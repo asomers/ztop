@@ -19,7 +19,7 @@ build: &BUILD
 
 task:
   env:
-    VERSION: 1.62.0
+    VERSION: 1.70.0
   name: FreeBSD 12.4 MSRV
   freebsd_instance:
     image: freebsd-12-4-release-amd64
@@ -50,14 +50,14 @@ task:
   # Test our minimal version spec
   minver_test_script:
     - . $HOME/.cargo/env
-    - cargo update -Zminimal-versions
+    - cargo update -Zdirect-minimal-versions
     - cargo check --all-targets
   before_cache_script: rm -rf $HOME/.cargo/registry/index
 
 task:
   name: Linux MSRV
   container:
-    image: rust:1.62.0
+    image: rust:1.70.0
   setup_script:
     - rustup component add rustfmt
   << : *BUILD
