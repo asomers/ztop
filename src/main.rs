@@ -2,15 +2,15 @@
 use std::{error::Error, io, num::NonZeroUsize, time::Duration};
 
 use clap::Parser;
-use regex::Regex;
-use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode};
-use tui::{
+use ratatui::{
     backend::TermionBackend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table},
     Terminal,
 };
+use regex::Regex;
+use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode};
 
 mod app;
 use self::app::App;
@@ -82,7 +82,7 @@ impl FilterPopup {
 }
 
 mod ui {
-    use tui::{backend::Backend, Frame};
+    use ratatui::{backend::Backend, Frame};
 
     use super::*;
 
@@ -169,7 +169,7 @@ mod ui {
     #[rustfmt::skip]
     pub fn draw_filter<B: Backend>(f: &mut Frame<B>, app: &FilterPopup) {
         let area = popup_layout(40, 3, f.size());
-        let popup_box = Paragraph::new(app.new_regex.as_ref())
+        let popup_box = Paragraph::new(app.new_regex.as_str())
             .block(
                 Block::default()
                 .borders(Borders::ALL)

@@ -14,10 +14,10 @@ include = ["src/**/*", "LICENSE", "README.md", "CHANGELOG.md"]
 cfg-if = "1.0"
 clap = { version = "3.0", features = ["derive"] }
 humanize-rs = "0.1.5"
-nix = { version = "0.24.0", default-features = false, features = ["poll", "time"] }
+nix = { version = "0.26.0", default-features = false, features = ["poll", "time"] }
 sysctl = "0.4.2"
-termion = "1.5"
-tui = { version = "0.15.0", features = ["termion"] }
+termion = "2.0"
+ratatui = { version = "0.23.0", default-features = false, features = ["termion"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 glob = "0.3"
