@@ -12,7 +12,7 @@ include = ["src/**/*", "LICENSE", "README.md", "CHANGELOG.md"]
 
 [dependencies]
 cfg-if = "1.0"
-clap = { version = "3.0", features = ["derive"] }
+clap = { version = "4.4", features = ["derive"] }
 humanize-rs = "0.1.5"
 nix = { version = "0.26.0", default-features = false, features = ["poll", "time"] }
 sysctl = "0.4.2"
@@ -23,6 +23,7 @@ ratatui = { version = "0.23.0", default-features = false, features = ["termion"]
 glob = "0.3"
 
 [dependencies.regex]
-version = "1"
+version = "1.3"
+default-features = false
 # Disable the unicode feature, since dataset names are always ASCII
 features = [ "perf", "std" ]

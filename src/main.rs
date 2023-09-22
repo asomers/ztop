@@ -19,7 +19,7 @@ use self::event::{Event, Events};
 
 /// Display ZFS datasets' I/O in real time
 // TODO: shorten the help options so they fit on 80 columns.
-#[derive(Debug, Default, clap::StructOpt)]
+#[derive(Debug, Default, clap::Parser)]
 struct Cli {
     /// only display datasets that have some activity.
     #[clap(short = 'a', long = "auto", verbatim_doc_comment)]
@@ -31,11 +31,10 @@ struct Cli {
     #[clap(short = 'd', long = "depth")]
     depth:    Option<NonZeroUsize>,
     /// only display datasets with names matching filter, as a regex.
-    #[clap(short = 'f', parse(try_from_str = Regex::new), long = "filter")]
+    #[clap(short = 'f', value_parser = Regex::new, long = "filter")]
     filter:   Option<Regex>,
     /// display update interval, in seconds or with the specified unit
-    #[clap(short = 't', parse(try_from_str = Cli::duration_from_str),
-        long = "time")]
+    #[clap(short = 't', value_parser = Cli::duration_from_str, long = "time")]
     time:     Option<Duration>,
     /// Reverse the sort
     #[clap(short = 'r', long = "reverse")]
@@ -198,7 +197,7 @@ mod ui {
 // https://github.com/rust-lang/rust-clippy/issues/7483
 #[allow(clippy::or_fun_call)]
 fn main() -> Result<(), Box<dyn Error>> {
-    let cli: Cli = Cli::from_args();
+    let cli: Cli = Cli::parse();
     let mut editting_filter = false;
     let mut tick_rate = cli.time.unwrap_or(Duration::from_secs(1));
     let col_idx = cli.sort.as_ref().map(ui::col_idx).unwrap_or(None);

@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Removed dependency on unmaintained tui crate
+- Removed dependency on unmaintained tui crate.
   ([RUSTSEC-2023-0049](https://rustsec.org/advisories/RUSTSEC-2023-0049))
+  Removed dependency on atty crate, fixing an unaligned read bug.
+  ([RUSTSEC-2021-0145](https://rustsec.org/advisories/RUSTSEC-2021-0145))
   (#[31](https://github.com/asomers/ztop/pull/31))
 
 ## [0.2.2] - 2023-03-27
