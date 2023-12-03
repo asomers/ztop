@@ -152,12 +152,13 @@ mod ui {
             Constraint::Length(8),
             Constraint::Length(7),
             Constraint::Length(7),
-            Constraint::Min(40),
+            Constraint::Min(6),
         ];
         let t = Table::new(rows)
             .header(header)
             .block(Block::default())
-            .widths(&widths);
+            .segment_size(ratatui::layout::SegmentSize::LastTakesRemainder)
+            .widths(widths);
         f.render_widget(t, f.size());
     }
 
