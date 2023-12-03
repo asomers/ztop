@@ -2,20 +2,20 @@
 use std::{error::Error, io, num::NonZeroUsize, time::Duration};
 
 use clap::Parser;
+use crossterm::event::KeyCode;
 use ratatui::{
-    backend::TermionBackend,
+    backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table},
     Terminal,
 };
 use regex::Regex;
-use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode};
 
 mod app;
 use self::app::App;
 mod event;
-use self::event::{Event, Events};
+use self::event::Event;
 
 /// Display ZFS datasets' I/O in real time
 // TODO: shorten the help options so they fit on 80 columns.
@@ -67,16 +67,12 @@ impl FilterPopup {
         Regex::new(&self.new_regex)
     }
 
-    pub fn on_key(&mut self, key: Key) {
-        match key {
-            Key::Char(c) => {
-                self.new_regex.push(c);
-            }
-            Key::Backspace => {
-                self.new_regex.pop();
-            }
-            _ => {}
-        }
+    pub fn on_backspace(&mut self) {
+        self.new_regex.pop();
+    }
+
+    pub fn on_char(&mut self, c: char) {
+        self.new_regex.push(c);
     }
 }
 
@@ -211,14 +207,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         col_idx,
     );
     let mut filter_popup = FilterPopup::default();
-    let stdout = io::stdout().into_raw_mode()?;
+    let stdout = io::stdout();
+    crossterm::terminal::enable_raw_mode().unwrap();
 
-    let stdout = MouseTerminal::from(stdout);
-    let backend = TermionBackend::new(stdout);
+    let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-
-    let stdin = io::stdin();
-    let mut events = Events::new(stdin);
 
     terminal.clear()?;
     while !app.should_quit() {
@@ -229,59 +222,66 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         })?;
 
-        match events.poll(&tick_rate) {
+        match event::poll(&tick_rate) {
             Some(Event::Tick) => {
                 app.on_tick();
             }
-            Some(Event::Key(Key::Esc)) if editting_filter => {
-                editting_filter = false;
-            }
-            Some(Event::Key(Key::Char('\n'))) if editting_filter => {
-                let filter = filter_popup.on_enter()?;
-                app.set_filter(filter);
-                editting_filter = false;
-            }
-            Some(Event::Key(key)) if editting_filter => {
-                filter_popup.on_key(key);
-            }
-            Some(Event::Key(Key::Char('+'))) => {
-                app.on_plus();
-            }
-            Some(Event::Key(Key::Char('-'))) => {
-                app.on_minus();
-            }
-            Some(Event::Key(Key::Char('<'))) => {
-                tick_rate /= 2;
-            }
-            Some(Event::Key(Key::Char('>'))) => {
-                tick_rate *= 2;
-            }
-            Some(Event::Key(Key::Char('a'))) => {
-                app.on_a();
-            }
-            Some(Event::Key(Key::Char('c'))) => {
-                app.on_c()?;
-            }
-            Some(Event::Key(Key::Char('D'))) => {
-                app.on_d(false);
-            }
-            Some(Event::Key(Key::Char('d'))) => {
-                app.on_d(true);
-            }
-            Some(Event::Key(Key::Char('F'))) => {
-                app.clear_filter();
-            }
-            Some(Event::Key(Key::Char('f'))) => {
-                editting_filter = true;
-            }
-            Some(Event::Key(Key::Char('q'))) => {
-                app.on_q();
-            }
-            Some(Event::Key(Key::Char('r'))) => {
-                app.on_r();
-            }
-            Some(Event::Key(_)) => {
-                // Ignore unknown keys
+            Some(Event::Key(kev)) => {
+                match kev.code {
+                    KeyCode::Esc if editting_filter => {
+                        editting_filter = false;
+                    }
+                    KeyCode::Enter if editting_filter => {
+                        let filter = filter_popup.on_enter()?;
+                        app.set_filter(filter);
+                        editting_filter = false;
+                    }
+                    KeyCode::Backspace if editting_filter => {
+                        filter_popup.on_backspace();
+                    }
+                    KeyCode::Char(c) if editting_filter => {
+                        filter_popup.on_char(c);
+                    }
+                    KeyCode::Char('+') => {
+                        app.on_plus();
+                    }
+                    KeyCode::Char('-') => {
+                        app.on_minus();
+                    }
+                    KeyCode::Char('<') => {
+                        tick_rate /= 2;
+                    }
+                    KeyCode::Char('>') => {
+                        tick_rate *= 2;
+                    }
+                    KeyCode::Char('a') => {
+                        app.on_a();
+                    }
+                    KeyCode::Char('c') => {
+                        app.on_c()?;
+                    }
+                    KeyCode::Char('D') => {
+                        app.on_d(false);
+                    }
+                    KeyCode::Char('d') => {
+                        app.on_d(true);
+                    }
+                    KeyCode::Char('F') => {
+                        app.clear_filter();
+                    }
+                    KeyCode::Char('f') => {
+                        editting_filter = true;
+                    }
+                    KeyCode::Char('q') => {
+                        app.on_q();
+                    }
+                    KeyCode::Char('r') => {
+                        app.on_r();
+                    }
+                    _ => {
+                        // Ignore unknown keys
+                    }
+                }
             }
             None => {
                 // stdin closed for some reason
@@ -292,6 +292,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
-    terminal.set_cursor(0, terminal.size()?.height - 1)?;
+    terminal.set_cursor(0, crossterm::terminal::size()?.1 - 1)?;
     Ok(())
 }
