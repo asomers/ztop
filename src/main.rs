@@ -77,7 +77,7 @@ impl FilterPopup {
 }
 
 mod ui {
-    use ratatui::{backend::Backend, Frame};
+    use ratatui::Frame;
 
     use super::*;
 
@@ -108,7 +108,7 @@ mod ui {
             .split(popup_layout[1])[1]
     }
 
-    pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+    pub fn draw(f: &mut Frame, app: &mut App) {
         let hstyle = Style::default().fg(Color::Red);
         let sstyle = hstyle.add_modifier(Modifier::REVERSED);
         let hcells = [
@@ -152,17 +152,17 @@ mod ui {
             Constraint::Length(8),
             Constraint::Length(7),
             Constraint::Length(7),
-            Constraint::Min(40),
+            Constraint::Min(6),
         ];
-        let t = Table::new(rows)
+        let t = Table::new(rows, widths)
             .header(header)
             .block(Block::default())
-            .widths(&widths);
+            .segment_size(ratatui::layout::SegmentSize::LastTakesRemainder);
         f.render_widget(t, f.size());
     }
 
     #[rustfmt::skip]
-    pub fn draw_filter<B: Backend>(f: &mut Frame<B>, app: &FilterPopup) {
+    pub fn draw_filter(f: &mut Frame, app: &FilterPopup) {
         let area = popup_layout(40, 3, f.size());
         let popup_box = Paragraph::new(app.new_regex.as_str())
             .block(
