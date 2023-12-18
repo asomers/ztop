@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed table rendering with terminals less than 90 chars
+  (#[33](https://github.com/asomers/ztop/pull/33))
+
 - Removed dependency on unmaintained tui crate.
   ([RUSTSEC-2023-0049](https://rustsec.org/advisories/RUSTSEC-2023-0049))
   Removed dependency on atty crate, fixing an unaligned read bug.
