@@ -154,11 +154,10 @@ mod ui {
             Constraint::Length(7),
             Constraint::Min(6),
         ];
-        let t = Table::new(rows)
+        let t = Table::new(rows, widths)
             .header(header)
             .block(Block::default())
-            .segment_size(ratatui::layout::SegmentSize::LastTakesRemainder)
-            .widths(widths);
+            .segment_size(ratatui::layout::SegmentSize::LastTakesRemainder);
         f.render_widget(t, f.size());
     }
 
