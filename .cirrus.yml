@@ -45,7 +45,7 @@ task:
     - cargo fmt --all -- --check --color=never
   audit_script:
     - . $HOME/.cargo/env
-    - pkg install -y cargo-audit
+    - cargo install --version=0.17.6 cargo-audit
     - cargo audit
   # Test our minimal version spec
   minver_test_script:
