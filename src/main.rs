@@ -293,5 +293,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
     terminal.set_cursor(0, crossterm::terminal::size()?.1 - 1)?;
+    crossterm::terminal::disable_raw_mode().unwrap();
     Ok(())
 }
