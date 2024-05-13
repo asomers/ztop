@@ -5,7 +5,7 @@ use crossterm::event;
 #[derive(Debug)]
 pub enum Event {
     Key(event::KeyEvent),
-    Mouse(event::MouseEvent),
+    Mouse,
     Tick,
     Other,
 }
@@ -17,7 +17,7 @@ pub fn poll(tick_rate: &Duration) -> Option<Event> {
     } else {
         match event::read() {
             Ok(event::Event::Key(key)) => Some(Event::Key(key)),
-            Ok(event::Event::Mouse(mev)) => Some(Event::Mouse(mev)),
+            Ok(event::Event::Mouse(_)) => Some(Event::Mouse),
             Ok(_) => Some(Event::Other),
             e => panic!("Unhandled error {e:?}"),
         }
