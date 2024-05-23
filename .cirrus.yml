@@ -45,7 +45,8 @@ task:
     - cargo fmt --all -- --check --color=never
   audit_script:
     - . $HOME/.cargo/env
-    - cargo install --version=0.17.6 cargo-audit
+    # install ca_root_nss due to https://github.com/rustsec/rustsec/issues/1137
+    - pkg install -y ca_root_nss cargo-audit
     - cargo audit
   # Test our minimal version spec
   minver_test_script:
