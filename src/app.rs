@@ -209,7 +209,7 @@ struct DataSourceIter<'a> {
     etime:      f64,
 }
 
-impl<'a> Iterator for DataSourceIter<'a> {
+impl Iterator for DataSourceIter<'_> {
     type Item = Element;
 
     fn next(&mut self) -> Option<Self::Item> {
