@@ -159,7 +159,7 @@ mod ui {
         let t = Table::new(rows, widths)
             .header(header)
             .block(Block::default())
-            .segment_size(ratatui::layout::SegmentSize::LastTakesRemainder);
+            .flex(ratatui::layout::Flex::Legacy);
         f.render_widget(t, f.size());
     }
 
