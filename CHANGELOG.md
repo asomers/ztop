@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Correctly reset terminal settings when quitting the application.
-  (#[38](https://github.com/asomers/gstat-rs/pull/38))
+  (#[2fe9cd1](https://github.com/asomers/ztop/commit/2fe9cd17d041d4b02f0a9e79000c6c1a4bf58d06))
 
 ### Changed
 
