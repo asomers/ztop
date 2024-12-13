@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correctly reset terminal settings when quitting the application.
   (#[38](https://github.com/asomers/gstat-rs/pull/38))
 
+### Changed
+
+- Tweaked colors for better visibility on some terminals.
+  (#[48](https://github.com/asomers/gstat-rs/pull/48))
+
 ## [0.2.3] - 2023-12-18
 
 ### Fixed

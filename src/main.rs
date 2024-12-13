@@ -109,7 +109,9 @@ mod ui {
     }
 
     pub fn draw(f: &mut Frame, app: &mut App) {
-        let hstyle = Style::default().fg(Color::Red);
+        let hstyle = Style::default()
+            .fg(Color::LightYellow)
+            .add_modifier(Modifier::BOLD);
         let sstyle = hstyle.add_modifier(Modifier::REVERSED);
         let hcells = [
             Cell::from("   r/s"),
