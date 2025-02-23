@@ -118,8 +118,7 @@ mod ui {
             Cell::from(" kB/s r"),
             Cell::from("   w/s"),
             Cell::from(" kB/s w"),
-            Cell::from("   d/s"),
-            Cell::from("kB/s d"),
+            Cell::from("unlink/s"),
             Cell::from("Dataset"),
         ]
         .into_iter()
@@ -141,8 +140,7 @@ mod ui {
                     Cell::from(format!("{:>7.0}", elem.r_s / 1024.0)),
                     Cell::from(format!("{:>6.0}", elem.ops_w)),
                     Cell::from(format!("{:>7.0}", elem.w_s / 1024.0)),
-                    Cell::from(format!("{:>6.0}", elem.ops_d)),
-                    Cell::from(format!("{:>6.0}", elem.d_s / 1024.0)),
+                    Cell::from(format!("{:>8.0}", elem.ops_unlink)),
                     Cell::from(elem.name),
                 ])
             })
@@ -152,8 +150,7 @@ mod ui {
             Constraint::Length(8),
             Constraint::Length(7),
             Constraint::Length(8),
-            Constraint::Length(7),
-            Constraint::Length(7),
+            Constraint::Length(9),
             Constraint::Min(6),
         ];
         let t = Table::new(rows, widths)
@@ -184,9 +181,8 @@ mod ui {
             "kB/s r" => Some(1),
             "w/s" => Some(2),
             "kB/s w" => Some(3),
-            "d/s" => Some(4),
-            "kB/s d" => Some(5),
-            "Dataset" => Some(6),
+            "unlink/s" => Some(4),
+            "Dataset" => Some(5),
             _ => None,
         }
     }
