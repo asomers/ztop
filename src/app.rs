@@ -3,7 +3,6 @@ use std::{
     collections::{btree_map, BTreeMap},
     error::Error,
     mem,
-    num::NonZeroUsize,
     ops::AddAssign,
 };
 
@@ -237,7 +236,7 @@ pub struct Element {
 pub struct App {
     auto:        bool,
     data:        DataSource,
-    depth:       Option<NonZeroUsize>,
+    depth:       Option<usize>,
     filter:      Option<Regex>,
     reverse:     bool,
     should_quit: bool,
@@ -250,7 +249,7 @@ impl App {
         auto: bool,
         children: bool,
         pools: Vec<String>,
-        depth: Option<NonZeroUsize>,
+        depth: Option<usize>,
         filter: Option<Regex>,
         reverse: bool,
         sort_idx: Option<usize>,
@@ -281,8 +280,8 @@ impl App {
         let mut v = self.data.iter()
             .filter(move |elem| {
                 if let Some(limit) = depth {
-                    let edepth = elem.name.split('/').count();
-                    edepth <= limit.get()
+                    let edepth = elem.name.split('/').count() - 1;
+                    edepth <= limit
                 } else {
                     true
                 }
@@ -324,13 +323,13 @@ impl App {
     pub fn on_d(&mut self, more_depth: bool) {
         self.depth = if more_depth {
             match self.depth {
-                None => NonZeroUsize::new(1),
-                Some(x) => NonZeroUsize::new(x.get() + 1),
+                None => Some(1),
+                Some(x) => Some(x + 1),
             }
         } else {
             match self.depth {
-                None => None,
-                Some(x) => NonZeroUsize::new(x.get() - 1),
+                None => Some(0),
+                Some(x) => Some(x.saturating_sub(1)),
             }
         }
     }
