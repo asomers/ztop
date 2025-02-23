@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Changed the default sort order.  By default, sort descending for numeric
+  columns or ascending for dataset name.
+  (#[56](https://github.com/asomers/gstat-rs/pull/56))
+
 - Changed the `-d` switch to match the behavior of `zfs list -d`: A depth of 0
   means to display each pool, a depth of 1 means to display one dataset deeper,
   etc.
