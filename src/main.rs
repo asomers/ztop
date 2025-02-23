@@ -1,5 +1,5 @@
 // vim: tw=80
-use std::{error::Error, io, num::NonZeroUsize, time::Duration};
+use std::{error::Error, io, time::Duration};
 
 use clap::Parser;
 use crossterm::event::KeyCode;
@@ -29,7 +29,7 @@ struct Cli {
     children: bool,
     /// display datasets no more than this many levels deep.
     #[clap(short = 'd', long = "depth")]
-    depth:    Option<NonZeroUsize>,
+    depth:    Option<usize>,
     /// only display datasets with names matching filter, as a regex.
     #[clap(short = 'f', value_parser = Regex::new, long = "filter")]
     filter:   Option<Regex>,

@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Changed the `-d` switch to match the behavior of `zfs list -d`: A depth of 0
+  means to display each pool, a depth of 1 means to display one dataset deeper,
+  etc.
+  (#[55](https://github.com/asomers/gstat-rs/pull/55))
+
 - Tweaked colors for better visibility on some terminals.
   (#[48](https://github.com/asomers/gstat-rs/pull/48))
 
