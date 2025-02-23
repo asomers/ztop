@@ -20,19 +20,19 @@ build: &BUILD
 task:
   env:
     VERSION: 1.74.0
-  name: FreeBSD 13.3 MSRV
+  name: FreeBSD 13.4 MSRV
   freebsd_instance:
-    image: freebsd-13-3-release-amd64
+    image: freebsd-13-4-release-amd64
   << : *SETUP
   << : *BUILD
   before_cache_script: rm -rf $HOME/.cargo/registry/index
 
 task:
-  name: FreeBSD 14.1 nightly
+  name: FreeBSD 14.2 nightly
   env:
     VERSION: nightly
   freebsd_instance:
-    image: freebsd-14-1-release-amd64-ufs
+    image: freebsd-14-2-release-amd64-ufs
   << : *SETUP
   << : *BUILD
   clippy_script:
