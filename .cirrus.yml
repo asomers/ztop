@@ -20,9 +20,9 @@ build: &BUILD
 task:
   env:
     VERSION: 1.74.0
-  name: FreeBSD 13.4 MSRV
+  name: FreeBSD 13.5 MSRV
   freebsd_instance:
-    image: freebsd-13-4-release-amd64
+    image: freebsd-13-5-release-amd64
   << : *SETUP
   << : *BUILD
   before_cache_script: rm -rf $HOME/.cargo/registry/index
