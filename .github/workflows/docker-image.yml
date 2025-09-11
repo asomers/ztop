@@ -74,7 +74,7 @@ jobs:
             # tag by branch name (normalized); works only for branches
             type=ref,event=branch
             # also tag by short sha
-            type=sha,format=short
+            type=sha,format=short,prefix=
             # add latest for main or master branches
             type=raw,value=latest,enable=${{ steps.vars.outputs.is_default == 'true' }}
 
