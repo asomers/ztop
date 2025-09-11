@@ -1,0 +1,113 @@
+name: Docker Image Release
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "*"
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # for creating releases
+      packages: write   # for pushing to GHCR
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute variables
+        id: vars
+        shell: bash
+        run: |
+          ref_name="${GITHUB_REF_NAME}"
+          ref_type="${GITHUB_REF_TYPE}" # 'branch' or 'tag'
+          short_sha="${GITHUB_SHA::7}"
+          # Slug for Docker tag (lowercase, replace invalid chars with '-')
+          branch_slug=$(echo "$ref_name" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9._-]+/-/g')
+          is_default=false
+          if [ "$ref_type" = "branch" ] && { [ "$ref_name" = "main" ] || [ "$ref_name" = "master" ]; }; then
+            is_default=true
+          fi
+
+          # Release tag: if pushing a tag, reuse it; otherwise generate one per build
+          if [ "$ref_type" = "tag" ]; then
+            release_tag="$ref_name"
+            release_name="Release $ref_name ($short_sha)"
+          else
+            release_tag="build-${branch_slug}-${short_sha}"
+            release_name="Build ${ref_name} (${short_sha})"
+          fi
+
+          echo "ref_name=$ref_name" >> "$GITHUB_OUTPUT"
+          echo "ref_type=$ref_type" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+          echo "branch_slug=$branch_slug" >> "$GITHUB_OUTPUT"
+          echo "is_default=$is_default" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "release_name=$release_name" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # Use owner/repo as the image name under ghcr.io
+          images: |
+            ghcr.io/${{ github.repository }}
+          tags: |
+            # tag by branch name (normalized); works only for branches
+            type=ref,event=branch
+            # also tag by short sha
+            type=sha,format=short
+            # add latest for main or master branches
+            type=raw,value=latest,enable=${{ steps.vars.outputs.is_default == 'true' }}
+
+      - name: Build and (conditionally) push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Generate release notes
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          {
+            echo "Docker images pushed:";
+            # Always include branch tag (normalized)
+            echo "- ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.branch_slug }}";
+            # Include latest for main/master
+            if [ "${{ steps.vars.outputs.is_default }}" = "true" ]; then
+              echo "- ghcr.io/${{ github.repository }}:latest";
+            fi
+            # Always include short SHA tag (build produces it as well)
+            echo "- ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.short_sha }}";
+          } > release_body.txt
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.release_tag }}
+          name: ${{ steps.vars.outputs.release_name }}
+          body_path: release_body.txt
+          prerelease: ${{ steps.vars.outputs.is_default != 'true' }}
