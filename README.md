@@ -1,6 +1,10 @@
 # ztop Docker
 I forked this with the sole intention of wrapping it in a docker container so it's trivial to run on TrueNAS without needing to install any packages
 
+`docker run -it ghcr.io/cbundy/ztop` for the basic full output
+
+`docker run -it ghcr.io/cbundy/ztop <args>` otherwise
+
 # ztop
 
 Display ZFS datasets' I/O in real time
