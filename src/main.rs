@@ -157,12 +157,12 @@ mod ui {
             .header(header)
             .block(Block::default())
             .flex(ratatui::layout::Flex::Legacy);
-        f.render_widget(t, f.size());
+        f.render_widget(t, f.area());
     }
 
     #[rustfmt::skip]
     pub fn draw_filter(f: &mut Frame, app: &FilterPopup) {
-        let area = popup_layout(40, 3, f.size());
+        let area = popup_layout(40, 3, f.area());
         let popup_box = Paragraph::new(app.new_regex.as_str())
             .block(
                 Block::default()
@@ -290,7 +290,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
-    terminal.set_cursor(0, crossterm::terminal::size()?.1 - 1)?;
+    terminal.set_cursor_position((0, crossterm::terminal::size()?.1 - 1))?;
     crossterm::terminal::disable_raw_mode().unwrap();
     Ok(())
 }
