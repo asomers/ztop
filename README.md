@@ -1,3 +1,6 @@
+# ztop Docker
+I forked this with the sole intention of wrapping it in a docker container so it's trivial to run on TrueNAS without needing to install any packages
+
 # ztop
 
 Display ZFS datasets' I/O in real time
