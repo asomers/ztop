@@ -52,4 +52,4 @@ USER appuser
 
 COPY --from=build /bin/server /bin/
 
-CMD ["/bin/server"]
+ENTRYPOINT ["/bin/server"]
