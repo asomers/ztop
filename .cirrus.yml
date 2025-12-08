@@ -2,6 +2,8 @@ setup: &SETUP
   env:
     HOME: /tmp # cargo needs it
     RUST_BACKTRACE: full  # Better info for debugging test failures.
+    CARGO_LOG: debug
+    CARGO_HTTP_DEBUG: true
   setup_script:
     - fetch https://sh.rustup.rs -o rustup.sh
     - sh rustup.sh -y --profile=minimal --default-toolchain ${VERSION}-x86_64-unknown-freebsd
