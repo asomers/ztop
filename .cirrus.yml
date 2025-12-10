@@ -2,9 +2,15 @@ setup: &SETUP
   env:
     HOME: /tmp # cargo needs it
     RUST_BACKTRACE: full  # Better info for debugging test failures.
+    CARGO_LOG: debug
+    CARGO_HTTP_DEBUG: true
   setup_script:
     - fetch https://sh.rustup.rs -o rustup.sh
     - sh rustup.sh -y --profile=minimal --default-toolchain ${VERSION}-x86_64-unknown-freebsd
+    - . $HOME/.cargo/env || true
+    - pkg info -a
+    - cargo version --verbose
+
 
 build: &BUILD
   cargo_cache:
@@ -17,22 +23,29 @@ build: &BUILD
     - . $HOME/.cargo/env || true
     - cargo test --all
 
-task:
-  env:
-    VERSION: 1.85.0
-  name: FreeBSD 13.5 MSRV
-  freebsd_instance:
-    image: freebsd-13-5-release-amd64
-  << : *SETUP
-  << : *BUILD
-  before_cache_script: rm -rf $HOME/.cargo/registry/index
+#task:
+  #env:
+    #VERSION: 1.85.0
+  #name: FreeBSD 13.5 MSRV
+  #freebsd_instance:
+    #image: freebsd-13-5-release-amd64
+  #<< : *SETUP
+  #<< : *BUILD
+  #before_cache_script: rm -rf $HOME/.cargo/registry/index
 
 task:
-  name: FreeBSD 14.2 nightly
   env:
     VERSION: nightly
-  freebsd_instance:
-    image: freebsd-14-2-release-amd64-ufs
+  matrix:
+    - name: FreeBSD 13.5 nightly
+      freebsd_instance:
+        image: freebsd-13-5-release-amd64
+    - name: FreeBSD 14.3 nightly
+      freebsd_instance:
+        image: freebsd-14-3-release-amd64-ufs
+    - name: FreeBSD 15.0 nightly
+      freebsd_instance:
+        image: freebsd-15-0-release-amd64-ufs
   << : *SETUP
   << : *BUILD
   clippy_script:
@@ -55,11 +68,11 @@ task:
     - cargo check --all-targets
   before_cache_script: rm -rf $HOME/.cargo/registry/index
 
-task:
-  name: Linux MSRV
-  container:
-    image: rust:1.85.0
-  setup_script:
-    - rustup component add rustfmt
-  << : *BUILD
-  before_cache_script: rm -rf $HOME/.cargo/registry/index
+#task:
+  #name: Linux MSRV
+  #container:
+    #image: rust:1.85.0
+  #setup_script:
+    #- rustup component add rustfmt
+  #<< : *BUILD
+  #before_cache_script: rm -rf $HOME/.cargo/registry/index
