@@ -16,7 +16,7 @@ jobs:
       matrix:
         include:
           - freebsd_version: "13.5"
-            rust_version: "1.85.0"
+            rust_version: "1.88.0"
           - freebsd_version: "14.4"
             rust_version: "nightly"
     name: FreeBSD ${{ matrix.freebsd_version }} ${{ matrix.rust_version }}
@@ -76,7 +76,7 @@ jobs:
     name: Linux MSRV
     runs-on: ubuntu-latest
     container:
-      image: rust:1.85.0
+      image: rust:1.88.0
     steps:
       - uses: actions/checkout@v6
       - name: Build

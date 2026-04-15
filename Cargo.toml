@@ -9,6 +9,7 @@ description = "Display ZFS datasets' I/O in real time"
 categories = ["command-line-utilities"]
 keywords = ["zfs"]
 include = ["src/**/*", "LICENSE", "README.md", "CHANGELOG.md"]
+rust-version = "1.88"
 
 [dependencies]
 cfg-if = "1.0"
