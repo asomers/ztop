@@ -2,7 +2,7 @@
 
 Display ZFS datasets' I/O in real time
 
-[![Build Status](https://api.cirrus-ci.com/github/asomers/ztop.svg)](https://cirrus-ci.com/github/asomers/ztop)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/asomers/ztop/ci.yml?branch=master&style=flat-square)](https://github.com/asomers/ztop/actions/workflows/ci.yml?query=branch%3Amaster)
 [![Crates.io](https://img.shields.io/crates/v/ztop.svg)](https://crates.io/crates/ztop)
 
 # Overview
