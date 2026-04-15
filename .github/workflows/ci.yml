@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - freebsd_version: "13.5"
+            rust_version: "1.88.0"
+          - freebsd_version: "14.4"
+            rust_version: "nightly"
+    name: FreeBSD ${{ matrix.freebsd_version }} ${{ matrix.rust_version }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Start VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: ${{ matrix.freebsd_version }}
+          usesh: true
+      - name: Install dependencies
+        shell: freebsd {0}
+        run: |
+          pkg install -y curl
+          fetch https://sh.rustup.rs -o rustup.sh
+          sh rustup.sh -y --profile=minimal --default-toolchain ${{ matrix.rust_version }}
+      - name: Build
+        shell: freebsd {0}
+        run: |
+          . $HOME/.cargo/env
+          cargo build --all
+      - name: Test
+        shell: freebsd {0}
+        run: |
+          . $HOME/.cargo/env
+          cargo test --all
+      - name: Clippy
+        if: matrix.rust_version == 'nightly'
+        shell: freebsd {0}
+        run: |
+          . $HOME/.cargo/env
+          rustup component add clippy
+          cargo clippy --all-features --all-targets -- -D warnings
+      - name: Fmt
+        if: matrix.rust_version == 'nightly'
+        shell: freebsd {0}
+        run: |
+          . $HOME/.cargo/env
+          rustup component add rustfmt
+          cargo fmt --all -- --check --color=never
+      - name: Audit
+        if: matrix.rust_version == 'nightly'
+        shell: freebsd {0}
+        run: |
+          . $HOME/.cargo/env
+          pkg install -y cargo-audit
+          cargo audit
+      - name: Minver
+        if: matrix.rust_version == 'nightly'
+        shell: freebsd {0}
+        run: |
+          . $HOME/.cargo/env
+          cargo update -Zdirect-minimal-versions
+          cargo check --all-targets
+
+  linux-msrv:
+    name: Linux MSRV
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.88.0
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build
+        run: cargo build --all
+      - name: Test
+        run: cargo test --all
