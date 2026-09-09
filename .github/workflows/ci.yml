@@ -15,10 +15,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - freebsd_version: "13.5"
-            rust_version: "1.88.0"
-          - freebsd_version: "14.4"
+          - freebsd_version: "15.1"
             rust_version: "nightly"
+          - freebsd_version: "14.5"
+            rust_version: "1.88.0"
     name: FreeBSD ${{ matrix.freebsd_version }} ${{ matrix.rust_version }}
     steps:
       - uses: actions/checkout@v6
